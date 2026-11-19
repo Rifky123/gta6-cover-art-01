@@ -1,40 +1,58 @@
-// Boulevard Press — gta6-cover-art-01 entry program (Node 22, standard
-// library only). The app is the repository's app/ folder: plain static files
-// that open in a desktop browser and run offline — a multi-panel, sunset-neon
-// GTA-style cover maker with its own lettering, grades and print finishes.
-// This program hands the entry in: it copies app/ and screenshots/ beside it
-// into the output directory and writes the dossier the judge reads, using
-// the kit's buildDossier library, unchanged, from vendor/.
+// DUSKLINE entry point for the gta6-cover-art-01 gate.
 //
-// Try it locally: node serve.ts, then open http://localhost:8080.
-// Write the entry locally (MAKEFUN_OUTPUT_DIR stands in for /output):
-//   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+// The app itself is app/ — plain static files, no build step: index.html
+// plus ES modules that paint multi-panel GTA-style cover art on a canvas
+// and export it as PNG in the three common post sizes. This program hands
+// the entry in: it copies app/ and screenshots/ into /output (or
+// $MAKEFUN_OUTPUT_DIR outside the grader) and writes dossier.json with the
+// kit's vendored buildDossier library. Two runs must produce byte-identical
+// output — nothing here reads the clock or the network.
+//
+// Try the app locally:  node serve.ts   →  http://localhost:8080
+// Hand it in yourself:  mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-app.ts';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
-const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-mkdirSync(outDir, { recursive: true });
-
-// The app ships as-is, fonts and sample photos included.
-cpSync(join(here, 'app'), join(outDir, 'app'), { recursive: true });
-
-// The screenshots: the exported cover first by name, then the editor at work.
-mkdirSync(join(outDir, 'screenshots'), { recursive: true });
-if (existsSync(join(here, 'screenshots'))) {
-  cpSync(join(here, 'screenshots'), join(outDir, 'screenshots'), { recursive: true });
+function copyTree(from: string, to: string) {
+  mkdirSync(to, { recursive: true });
+  cpSync(from, to, { recursive: true });
 }
 
-// The dossier, under the scorer's own caps so an entry this program writes
-// is never one the gate would refuse: 4 screenshots of at most 256 KiB each,
-// app/ within 993 files and 48 MiB, and the source text capped at 160 KiB.
+copyTree(join(here, 'app'), join(out, 'app'));
+
+const shotsFrom = join(here, 'screenshots');
+if (existsSync(shotsFrom)) copyTree(shotsFrom, join(out, 'screenshots'));
+
+// The scorer caps (from the kit's reference/gate.json): refuse here what the
+// scorer would refuse there, so a broken entry fails loudly before submit.
+function countEntries(dir: string): number {
+  let n = 0;
+  for (const name of readdirSync(dir)) {
+    n += 1;
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) n += countEntries(full);
+  }
+  return n;
+}
+const appEntries = countEntries(join(out, 'app'));
+if (appEntries > 993) throw new Error(`app/ holds ${appEntries} entries, cap is 993`);
+
+const shotFiles = existsSync(shotsFrom) ? readdirSync(shotsFrom).filter((f) => !f.startsWith('.')) : [];
+if (shotFiles.length > 4) throw new Error(`${shotFiles.length} screenshots, cap is 4`);
+for (const f of shotFiles) {
+  const bytes = statSync(join(shotsFrom, f)).size;
+  if (bytes > 262144) throw new Error(`screenshot ${f} is ${bytes} bytes, cap is 262144`);
+}
+
 writeFileSync(
-  join(outDir, 'dossier.json'),
-  buildDossier(outDir, {
+  join(out, 'dossier.json'),
+  buildDossier(out, {
     text_max_bytes: 163840,
     screenshots: { max: 4, max_bytes: 262144 },
     app_max_files: 993,

@@ -3,93 +3,114 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Boulevard Press — GTA-style cover art maker</title>
+<title>DUSKLINE — multi-panel cover art studio</title>
 <link rel="stylesheet" href="style.css">
+<link rel="modulepreload" href="src/painter.js">
 </head>
 <body>
-<header class="masthead">
-  <div class="wordmark">BOULEVARD<em>PRESS</em></div>
-  <p class="tagline">Your photos, one poster — a multi-panel, sunset-neon cover maker. Everything stays on this machine.</p>
-</header>
+<div id="stage" class="stage">
 
-<main class="workbench">
-  <section class="stage" id="stage">
-    <div class="poster-shell">
-      <canvas id="poster" width="1920" height="1080" aria-label="Cover preview"></canvas>
+  <header class="bar">
+    <div class="brand">
+      <span class="brand-mark">DL</span>
+      <div class="brand-words">
+        <strong>DUSKLINE</strong>
+        <small>multi-panel cover art studio</small>
+      </div>
     </div>
-    <p class="stage-hint">Click a panel to select it &middot; drag to reframe the photo &middot; scroll to zoom &middot; drop a photo anywhere</p>
-  </section>
+    <div class="bar-actions">
+      <button class="btn export" data-export="square"  title="Export a 1080 × 1080 PNG">1080×1080&nbsp;PNG</button>
+      <button class="btn export" data-export="portrait" title="Export a 1080 × 1350 PNG">1080×1350&nbsp;PNG</button>
+      <button class="btn export" data-export="wide"    title="Export a 1920 × 1080 PNG">1920×1080&nbsp;PNG</button>
+    </div>
+  </header>
 
-  <aside class="rail">
-    <section class="card">
-      <h2>Vibe</h2>
-      <div class="chips" id="vibe-chips"></div>
-    </section>
+  <aside class="side" id="side">
 
-    <section class="card">
-      <h2>Poster size</h2>
-      <div class="chips" id="size-chips"></div>
-    </section>
-
-    <section class="card">
-      <h2>Panel layout</h2>
-      <div class="chips" id="layout-chips"></div>
-    </section>
-
-    <section class="card">
-      <h2>Colour grade</h2>
-      <div class="chips" id="grade-chips"></div>
-    </section>
-
-    <section class="card">
-      <h2>Selected panel</h2>
-      <div class="chips" id="panel-chips"></div>
-      <div class="stack">
-        <span class="file-slot" id="file-slot">no photo loaded</span>
-        <label class="btn" for="photo-file">Load photo&hellip;</label>
-        <button id="fill-all" class="btn ghost" type="button">Use this photo in every panel</button>
-        <button id="shuffle" class="btn ghost" type="button">Shuffle crops</button>
-        <label class="slider"><span>Zoom</span><input type="range" id="zoom" min="1" max="2.6" step="0.01" value="1.1"></label>
+    <section class="group">
+      <h2>Post size</h2>
+      <div class="chips" id="size-chips">
+        <button class="chip" data-size="square">1080²</button>
+        <button class="chip" data-size="portrait">4:5</button>
+        <button class="chip" data-size="wide">16:9</button>
       </div>
     </section>
 
-    <section class="card">
-      <h2>Caption</h2>
-      <div class="stack">
-        <label class="field"><span>Main title</span><input id="caption" type="text" maxlength="26" value="BOULEVARD" autocomplete="off" spellcheck="false"></label>
-        <label class="field"><span>Tag line</span><input id="subline" type="text" maxlength="52" value="SIX STORIES · ONE CITY · NO BRAKES" autocomplete="off" spellcheck="false"></label>
-        <label class="field"><span>Top banner</span><input id="topline" type="text" maxlength="42" value="BOULEVARD PRESS PRESENTS" autocomplete="off" spellcheck="false"></label>
-        <label class="field"><span>Bottom banner</span><input id="footline" type="text" maxlength="52" value="AN ORIGINAL COVER · MADE WITH BOULEVARD PRESS" autocomplete="off" spellcheck="false"></label>
-        <label class="check"><input type="checkbox" id="bands" checked> Banner bars top and bottom</label>
+    <section class="group">
+      <h2>Layout</h2>
+      <div class="chips layout-chips" id="layout-chips">
+        <button class="chip lay" data-layout="solo"><i class="lg lg-solo"></i>solo</button>
+        <button class="chip lay" data-layout="duo"><i class="lg lg-duo"></i>duo</button>
+        <button class="chip lay" data-layout="trio"><i class="lg lg-trio"></i>trio</button>
+        <button class="chip lay" data-layout="stack"><i class="lg lg-stack"></i>stack</button>
+        <button class="chip lay" data-layout="grid"><i class="lg lg-grid"></i>grid</button>
+        <button class="chip lay" data-layout="hero"><i class="lg lg-hero"></i>hero</button>
       </div>
     </section>
 
-    <section class="card">
+    <section class="group">
+      <h2>Photos</h2>
+      <label class="btn wide-btn" for="photo-input">＋ Add photo(s)</label>
+      <input type="file" id="photo-input" accept="image/*" multiple hidden>
+      <div class="thumbs" id="photo-thumbs"></div>
+      <button class="btn soft" id="fill-all">Fill every panel from one photo</button>
+      <p class="hint">Photos stay on this machine — nothing is uploaded.</p>
+    </section>
+
+    <section class="group">
+      <h2>Grade</h2>
+      <div class="chips grade-chips" id="grade-chips"></div>
+    </section>
+
+    <section class="group">
       <h2>Finish</h2>
-      <div class="stack">
-        <label class="slider"><span>Grain</span><input type="range" id="f-grain" min="0" max="1" step="0.01" value="0.35"></label>
-        <label class="slider"><span>Scanlines</span><input type="range" id="f-scan" min="0" max="0.6" step="0.01" value="0.12"></label>
-        <label class="slider"><span>Halftone</span><input type="range" id="f-dots" min="0" max="0.6" step="0.01" value="0"></label>
-        <label class="slider"><span>Vignette</span><input type="range" id="f-vig" min="0" max="1" step="0.01" value="0.45"></label>
-        <label class="check"><input type="checkbox" id="f-frame" checked> Border frame</label>
+      <div class="chips" id="finish-chips">
+        <button class="chip" data-finish="grain">grain</button>
+        <button class="chip" data-finish="scanlines">scanlines</button>
+        <button class="chip" data-finish="halftone">halftone</button>
+        <button class="chip" data-finish="vignette">vignette</button>
+        <button class="chip" data-finish="frame">frame</button>
       </div>
     </section>
 
-    <section class="card">
-      <h2>Export PNG</h2>
-      <div class="stack">
-        <div class="export-row">
-          <button class="btn primary" type="button" data-export="wide">1920&thinsp;&times;&thinsp;1080</button>
-          <button class="btn primary" type="button" data-export="square">1080&thinsp;&times;&thinsp;1080</button>
-          <button class="btn primary" type="button" data-export="portrait">1080&thinsp;&times;&thinsp;1350</button>
-        </div>
-        <button id="load-samples" class="btn ghost" type="button">Load the sample photos</button>
+    <section class="group">
+      <h2>Caption</h2>
+      <input class="field" id="cap-title" maxlength="24" placeholder="TITLE" spellcheck="false">
+      <input class="field" id="cap-sub" maxlength="48" placeholder="sub-line (optional)" spellcheck="false">
+      <div class="chips" id="cap-pos">
+        <button class="chip" data-pos="bottom">bottom</button>
+        <button class="chip" data-pos="top">top</button>
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="cap-band"> solid band</label>
+        <label class="check"><input type="checkbox" id="cap-underline"> sub rule</label>
+      </div>
+      <div class="row slider-row">
+        <span class="lbl">size</span>
+        <input type="range" id="cap-scale" min="60" max="140" value="100">
       </div>
     </section>
+
+    <section class="group">
+      <h2>Panel <span class="muted" id="panel-no">—</span></h2>
+      <select class="field" id="panel-photo"></select>
+      <div class="row slider-row">
+        <span class="lbl">zoom</span>
+        <input type="range" id="panel-zoom" min="100" max="260" value="100">
+      </div>
+      <button class="btn soft" id="panel-reset">Recenter crop</button>
+    </section>
+
   </aside>
-</main>
 
-<input type="file" id="photo-file" accept="image/*" hidden>
-<script type="module" src="src/deck.js"></script>
+  <main class="board">
+    <div class="canvas-wrap" id="canvas-wrap">
+      <canvas id="poster" width="1080" height="1080"></canvas>
+    </div>
+    <p class="board-hint" id="board-hint">click a panel to select · drag to reframe · wheel to zoom</p>
+  </main>
+
+</div>
+<script type="module" src="src/main.js"></script>
 </body>
 </html>

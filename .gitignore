@@ -1,3 +1,8 @@
-out/
-out2/
-node_modules/
+# Local build output (what `node main.ts` writes for inspection)
+/out/
+/out2/
+
+# Logs and OS noise
+*.log
+.DS_Store
+Thumbs.db
