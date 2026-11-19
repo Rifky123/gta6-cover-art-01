@@ -11,13 +11,27 @@
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-app.ts';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+
+// pre-flight: the gate wants 3-4 screenshots, each a PNG/JPEG of at most 256 KiB
+const shotsDir = join(here, 'screenshots');
+if (!existsSync(shotsDir)) {
+  console.error('screenshots/ is missing - the judge sees nothing without it');
+  process.exit(1);
+}
+const shots = readdirSync(shotsDir).filter((f) => /\.(png|jpe?g)$/i.test(f));
+let shotBytes = 0;
+for (const shot of shots) shotBytes += statSync(join(shotsDir, shot)).size;
+if (shots.length < 3 || shots.length > 4) {
+  console.error(`screenshots/ holds ${shots.length} files - the gate takes 3 or 4`);
+  process.exit(1);
+}
 
 mkdirSync(out, { recursive: true });
 cpSync(join(here, 'app'), join(out, 'app'), { recursive: true });
@@ -37,4 +51,24 @@ writeFileSync(
     app_max_bytes: 50331648,
     app_path_max_bytes: 1000,
   }),
+);
+
+// run summary: what went out, and how heavy
+let appFiles = 0;
+let appBytes = 0;
+const walk = (dir) => {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) walk(full);
+    else {
+      appFiles += 1;
+      appBytes += statSync(full).size;
+    }
+  }
+};
+walk(join(out, 'app'));
+console.log(
+  `heatwave studio packed: ${appFiles} app files (${(appBytes / 1048576).toFixed(2)} MiB), ` +
+  `${shots.length} screenshots (${(shotBytes / 1024).toFixed(0)} KiB), ` +
+  `dossier ${statSync(join(out, 'dossier.json')).size} bytes`,
 );
