@@ -3,32 +3,93 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Heatwave Studio — GTA-style cover art maker</title>
+<title>Boulevard Press — GTA-style cover art maker</title>
 <link rel="stylesheet" href="style.css">
-<link rel="modulepreload" href="src/poster.js">
 </head>
 <body>
-<header id="topbar">
-  <div class="brand">
-    <span class="brand-mark">HW</span>
-    <span class="brand-name">HEATWAVE STUDIO</span>
-    <span class="brand-tag">GTA-style cover art from your photos</span>
-  </div>
-  <nav class="top-actions">
-    <button id="btn-demo" type="button" class="ghost">Load demo photos</button>
-    <span class="privacy">photos never leave this machine</span>
-  </nav>
+<header class="masthead">
+  <div class="wordmark">BOULEVARD<em>PRESS</em></div>
+  <p class="tagline">Your photos, one poster — a multi-panel, sunset-neon cover maker. Everything stays on this machine.</p>
 </header>
-<main id="workspace">
-  <section id="stage">
-    <div id="stage-scroll">
-      <canvas id="poster-canvas" width="1080" height="1350"></canvas>
-      <p id="stage-hint">Click a panel to select it &middot; drag to move the crop &middot; wheel to zoom</p>
+
+<main class="workbench">
+  <section class="stage" id="stage">
+    <div class="poster-shell">
+      <canvas id="poster" width="1920" height="1080" aria-label="Cover preview"></canvas>
     </div>
+    <p class="stage-hint">Click a panel to select it &middot; drag to reframe the photo &middot; scroll to zoom &middot; drop a photo anywhere</p>
   </section>
-  <aside id="sidebar"></aside>
+
+  <aside class="rail">
+    <section class="card">
+      <h2>Vibe</h2>
+      <div class="chips" id="vibe-chips"></div>
+    </section>
+
+    <section class="card">
+      <h2>Poster size</h2>
+      <div class="chips" id="size-chips"></div>
+    </section>
+
+    <section class="card">
+      <h2>Panel layout</h2>
+      <div class="chips" id="layout-chips"></div>
+    </section>
+
+    <section class="card">
+      <h2>Colour grade</h2>
+      <div class="chips" id="grade-chips"></div>
+    </section>
+
+    <section class="card">
+      <h2>Selected panel</h2>
+      <div class="chips" id="panel-chips"></div>
+      <div class="stack">
+        <span class="file-slot" id="file-slot">no photo loaded</span>
+        <label class="btn" for="photo-file">Load photo&hellip;</label>
+        <button id="fill-all" class="btn ghost" type="button">Use this photo in every panel</button>
+        <button id="shuffle" class="btn ghost" type="button">Shuffle crops</button>
+        <label class="slider"><span>Zoom</span><input type="range" id="zoom" min="1" max="2.6" step="0.01" value="1.1"></label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Caption</h2>
+      <div class="stack">
+        <label class="field"><span>Main title</span><input id="caption" type="text" maxlength="26" value="BOULEVARD" autocomplete="off" spellcheck="false"></label>
+        <label class="field"><span>Tag line</span><input id="subline" type="text" maxlength="52" value="SIX STORIES · ONE CITY · NO BRAKES" autocomplete="off" spellcheck="false"></label>
+        <label class="field"><span>Top banner</span><input id="topline" type="text" maxlength="42" value="BOULEVARD PRESS PRESENTS" autocomplete="off" spellcheck="false"></label>
+        <label class="field"><span>Bottom banner</span><input id="footline" type="text" maxlength="52" value="AN ORIGINAL COVER · MADE WITH BOULEVARD PRESS" autocomplete="off" spellcheck="false"></label>
+        <label class="check"><input type="checkbox" id="bands" checked> Banner bars top and bottom</label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Finish</h2>
+      <div class="stack">
+        <label class="slider"><span>Grain</span><input type="range" id="f-grain" min="0" max="1" step="0.01" value="0.35"></label>
+        <label class="slider"><span>Scanlines</span><input type="range" id="f-scan" min="0" max="0.6" step="0.01" value="0.12"></label>
+        <label class="slider"><span>Halftone</span><input type="range" id="f-dots" min="0" max="0.6" step="0.01" value="0"></label>
+        <label class="slider"><span>Vignette</span><input type="range" id="f-vig" min="0" max="1" step="0.01" value="0.45"></label>
+        <label class="check"><input type="checkbox" id="f-frame" checked> Border frame</label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Export PNG</h2>
+      <div class="stack">
+        <div class="export-row">
+          <button class="btn primary" type="button" data-export="wide">1920&thinsp;&times;&thinsp;1080</button>
+          <button class="btn primary" type="button" data-export="square">1080&thinsp;&times;&thinsp;1080</button>
+          <button class="btn primary" type="button" data-export="portrait">1080&thinsp;&times;&thinsp;1350</button>
+        </div>
+        <button id="load-samples" class="btn ghost" type="button">Load the sample photos</button>
+      </div>
+    </section>
+  </aside>
 </main>
-<div id="drop-veil" hidden><div class="drop-msg">Drop photo on a panel</div></div>
-<script type="module" src="src/studio.js"></script>
+
+<input type="file" id="photo-file" accept="image/*" hidden>
+<script type="module" src="src/deck.js"></script>
 </body>
 </html>
