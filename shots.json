@@ -1,7 +1,1 @@
-[
-  { "file": "01-cover-wide.jpg",    "mode": "embed",  "shot": "wide",    "px": 1280, "viewport": [1280, 720] },
-  { "file": "02-editor.jpg",        "mode": "editor", "query": "?demo=1&size=square",   "viewport": [1280, 800] },
-  { "file": "03-editor-portrait.jpg","mode": "editor", "query": "?demo=1&size=portrait&panel=2", "viewport": [1280, 800],
-    "eval": ["document.getElementById('side').scrollTop = 999999;"] },
-  { "file": "04-cover-portrait.jpg","mode": "embed",  "shot": "portrait", "px": 768,  "viewport": [768, 960] }
-]
+{"app": "Neonpalm", "shots": [{"file": "01-cover-wide.jpg", "what": "1920x1080 cover, quartet layout, sunset grade via embed mode at 1280x720"}, {"file": "02-editor.jpg", "what": "editor with the two sample photos loaded, wide 1920x1080 project"}, {"file": "03-editor-portrait.jpg", "what": "editor with a 1080x1350 project, photo list, panels, grade and caption controls"}, {"file": "04-cover-portrait.jpg", "what": "1080x1350 cover, quartet layout, sunset grade via embed mode at 768x960"}]}

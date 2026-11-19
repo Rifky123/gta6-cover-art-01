@@ -1,116 +1,106 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DUSKLINE — multi-panel cover art studio</title>
-<link rel="stylesheet" href="style.css">
-<link rel="modulepreload" href="src/painter.js">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Neonpalm — multi-panel GTA-style cover art maker</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="src/booth.js"></script>
 </head>
 <body>
-<div id="stage" class="stage">
-
   <header class="bar">
     <div class="brand">
-      <span class="brand-mark">DL</span>
-      <div class="brand-words">
-        <strong>DUSKLINE</strong>
-        <small>multi-panel cover art studio</small>
+      <span class="brand-mark">NP</span>
+      <div class="brand-copy">
+        <h1>NEONPALM</h1>
+        <p class="tagline">multi-panel cover art maker</p>
       </div>
     </div>
-    <div class="bar-actions">
-      <button class="btn export" data-export="square"  title="Export a 1080 × 1080 PNG">1080×1080&nbsp;PNG</button>
-      <button class="btn export" data-export="portrait" title="Export a 1080 × 1350 PNG">1080×1350&nbsp;PNG</button>
-      <button class="btn export" data-export="wide"    title="Export a 1920 × 1080 PNG">1920×1080&nbsp;PNG</button>
-    </div>
+    <nav class="size-picker" id="sizePicker" aria-label="Post size">
+      <button class="chip" data-size="1080x1080" type="button">Square · 1080²</button>
+      <button class="chip" data-size="1080x1350" type="button">Portrait · 1080×1350</button>
+      <button class="chip" data-size="1920x1080" type="button">Wide · 1920×1080</button>
+    </nav>
   </header>
 
-  <aside class="side" id="side">
+  <main class="desk">
+    <aside class="rail" id="rail">
 
-    <section class="group">
-      <h2>Post size</h2>
-      <div class="chips" id="size-chips">
-        <button class="chip" data-size="square">1080²</button>
-        <button class="chip" data-size="portrait">4:5</button>
-        <button class="chip" data-size="wide">16:9</button>
-      </div>
+      <section class="card" id="cardPhotos">
+        <h2>Photos</h2>
+        <button class="btn primary" id="addPhotos" type="button">Choose photos…</button>
+        <input type="file" id="photoInput" accept="image/*" multiple hidden>
+        <ul class="panel-list" id="panelList"></ul>
+        <div class="btn-row">
+          <button class="btn wide" id="fillOne" type="button">Fill all panels from one photo</button>
+          <button class="btn ghost" id="shuffleCrops" type="button">Vary the crops</button>
+        </div>
+        <p class="hint">Photos stay on your machine — nothing is uploaded.</p>
+      </section>
+
+      <section class="card" id="cardLayout">
+        <h2>Panels</h2>
+        <div class="layout-grid" id="layoutGrid">
+          <button class="layout-chip" data-layout="quad" type="button">Quartet 2×2</button>
+          <button class="layout-chip" data-layout="trio" type="button">Trio collage</button>
+          <button class="layout-chip" data-layout="stack" type="button">Stacked trilogy</button>
+          <button class="layout-chip" data-layout="split" type="button">Diptych</button>
+          <button class="layout-chip" data-layout="banner" type="button">Solo banner</button>
+        </div>
+        <p class="hint">Drag inside a panel to reframe it · wheel to zoom.</p>
+      </section>
+
+      <section class="card" id="cardLook">
+        <h2>Grade</h2>
+        <div class="grade-row" id="gradeRow">
+          <button class="grade-chip" data-grade="sunset" type="button">Sunset</button>
+          <button class="grade-chip" data-grade="neon" type="button">Neon</button>
+          <button class="grade-chip" data-grade="heat" type="button">Heat</button>
+          <button class="grade-chip" data-grade="tide" type="button">Tide</button>
+          <button class="grade-chip" data-grade="noir" type="button">Noir</button>
+        </div>
+        <h2>Finish</h2>
+        <div class="finish-row" id="finishRow">
+          <label class="toggle"><input type="checkbox" data-finish="grain" checked> Grain</label>
+          <label class="toggle"><input type="checkbox" data-finish="scanlines"> Scanlines</label>
+          <label class="toggle"><input type="checkbox" data-finish="halftone"> Halftone</label>
+          <label class="toggle"><input type="checkbox" data-finish="vignette" checked> Vignette</label>
+          <label class="toggle"><input type="checkbox" data-finish="frame" checked> Frame</label>
+        </div>
+      </section>
+
+      <section class="card" id="cardCaption">
+        <h2>Caption</h2>
+        <label class="field">Title
+          <input id="titleInput" type="text" value="PALM CITY" maxlength="18" spellcheck="false">
+        </label>
+        <label class="field">Sub-line
+          <input id="subInput" type="text" value="WELCOME TO THE COAST" maxlength="40" spellcheck="false">
+        </label>
+        <label class="field">Badge
+          <input id="badgeInput" type="text" value="EST. 2026" maxlength="24" spellcheck="false">
+        </label>
+        <div class="finish-row">
+          <label class="toggle"><input type="checkbox" id="bandTop" checked> Top band</label>
+          <label class="toggle"><input type="checkbox" id="bandBottom" checked> Bottom band</label>
+        </div>
+      </section>
+
+    </aside>
+
+    <section class="stage" id="stage">
+      <canvas id="art"></canvas>
+      <p class="stage-note" id="stageNote">live preview · true size, scaled to fit</p>
     </section>
-
-    <section class="group">
-      <h2>Layout</h2>
-      <div class="chips layout-chips" id="layout-chips">
-        <button class="chip lay" data-layout="solo"><i class="lg lg-solo"></i>solo</button>
-        <button class="chip lay" data-layout="duo"><i class="lg lg-duo"></i>duo</button>
-        <button class="chip lay" data-layout="trio"><i class="lg lg-trio"></i>trio</button>
-        <button class="chip lay" data-layout="stack"><i class="lg lg-stack"></i>stack</button>
-        <button class="chip lay" data-layout="grid"><i class="lg lg-grid"></i>grid</button>
-        <button class="chip lay" data-layout="hero"><i class="lg lg-hero"></i>hero</button>
-      </div>
-    </section>
-
-    <section class="group">
-      <h2>Photos</h2>
-      <label class="btn wide-btn" for="photo-input">＋ Add photo(s)</label>
-      <input type="file" id="photo-input" accept="image/*" multiple hidden>
-      <div class="thumbs" id="photo-thumbs"></div>
-      <button class="btn soft" id="fill-all">Fill every panel from one photo</button>
-      <p class="hint">Photos stay on this machine — nothing is uploaded.</p>
-    </section>
-
-    <section class="group">
-      <h2>Grade</h2>
-      <div class="chips grade-chips" id="grade-chips"></div>
-    </section>
-
-    <section class="group">
-      <h2>Finish</h2>
-      <div class="chips" id="finish-chips">
-        <button class="chip" data-finish="grain">grain</button>
-        <button class="chip" data-finish="scanlines">scanlines</button>
-        <button class="chip" data-finish="halftone">halftone</button>
-        <button class="chip" data-finish="vignette">vignette</button>
-        <button class="chip" data-finish="frame">frame</button>
-      </div>
-    </section>
-
-    <section class="group">
-      <h2>Caption</h2>
-      <input class="field" id="cap-title" maxlength="24" placeholder="TITLE" spellcheck="false">
-      <input class="field" id="cap-sub" maxlength="48" placeholder="sub-line (optional)" spellcheck="false">
-      <div class="chips" id="cap-pos">
-        <button class="chip" data-pos="bottom">bottom</button>
-        <button class="chip" data-pos="top">top</button>
-      </div>
-      <div class="row">
-        <label class="check"><input type="checkbox" id="cap-band"> solid band</label>
-        <label class="check"><input type="checkbox" id="cap-underline"> sub rule</label>
-      </div>
-      <div class="row slider-row">
-        <span class="lbl">size</span>
-        <input type="range" id="cap-scale" min="60" max="140" value="100">
-      </div>
-    </section>
-
-    <section class="group">
-      <h2>Panel <span class="muted" id="panel-no">—</span></h2>
-      <select class="field" id="panel-photo"></select>
-      <div class="row slider-row">
-        <span class="lbl">zoom</span>
-        <input type="range" id="panel-zoom" min="100" max="260" value="100">
-      </div>
-      <button class="btn soft" id="panel-reset">Recenter crop</button>
-    </section>
-
-  </aside>
-
-  <main class="board">
-    <div class="canvas-wrap" id="canvas-wrap">
-      <canvas id="poster" width="1080" height="1080"></canvas>
-    </div>
-    <p class="board-hint" id="board-hint">click a panel to select · drag to reframe · wheel to zoom</p>
   </main>
 
-</div>
-<script type="module" src="src/main.js"></script>
+  <footer class="dock">
+    <p class="dock-note">Exports render at full size and save a PNG.</p>
+    <div class="dock-buttons">
+      <button class="btn primary" data-export="1080x1080" type="button">Export 1080 × 1080</button>
+      <button class="btn primary" data-export="1080x1350" type="button">Export 1080 × 1350</button>
+      <button class="btn primary" data-export="1920x1080" type="button">Export 1920 × 1080</button>
+    </div>
+  </footer>
 </body>
 </html>

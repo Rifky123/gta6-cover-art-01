@@ -1,293 +1,250 @@
-// ui.js — editor chrome: chip groups, photo tray, caption fields, panel
-// controls, canvas pointer interactions and the three PNG exports.
+// ui.js — Neonpalm editor wiring: binds the rail controls to the project, handles
+// photo loading, panel reframing (drag to move the crop, wheel to zoom), and
+// notifies booth.js after every change so the preview repaints.
 
-import { SIZES, state, onChange, touch, setLayout, setGrade, setFinish, setCaption,
-         setSize, selectPanel, setPanel, addPhoto, removePhoto, fillAll, clamp } from "./state.js";
-import { LAYOUTS, slotsFor, slotAt, pixelRect, gutterFor } from "./layouts.js";
-import { GRADES } from "./grades.js";
-import { renderAt, paintPoster } from "./painter.js";
+import { SIZES, LAYOUTS, GRADES, FINISHES, syncPanels, assignPhoto } from './boards.js';
 
-const $ = (sel) => document.querySelector(sel);
+// Wire every control. onChange(project, reason) fires after each mutation.
+export function bindEditor(project, onChange) {
+  const emit = (reason) => onChange(project, reason);
 
-let canvas, wrap;
-
-export function initUI() {
-  canvas = $("#poster");
-  wrap = $("#canvas-wrap");
-
-  buildGradeChips();
-  wireChipGroups();
-  wirePhotos();
-  wireCaption();
-  wirePanelControls();
-  wireCanvas();
-  wireExports();
-
-  window.addEventListener("resize", scalePreview);
-  onChange(() => { syncControls(); repaint(); });
-  document.fonts.ready.then(() => touch());
-}
-
-function repaint() {
-  const S = SIZES[state.size];
-  if (canvas.width !== S.w || canvas.height !== S.h) {
-    canvas.width = S.w;
-    canvas.height = S.h;
+  // --- post size ---
+  const sizePicker = document.getElementById('sizePicker');
+  for (const btn of sizePicker.querySelectorAll('.chip')) {
+    btn.addEventListener('click', () => {
+      project.size = btn.dataset.size;
+      markOn(sizePicker, 'size', project.size);
+      emit('size');
+    });
   }
-  paintPoster(canvas.getContext("2d"), state, S.w, S.h);
-  scalePreview();
-}
+  markOn(sizePicker, 'size', project.size);
 
-// ── chip groups ─────────────────────────────────────────────────────
-
-function buildGradeChips() {
-  const host = $("#grade-chips");
-  for (const [key, g] of Object.entries(GRADES)) {
-    const b = document.createElement("button");
-    b.className = "chip";
-    b.dataset.grade = key;
-    b.style.background = g.swatch;
-    b.style.color = "#fff";
-    b.style.textShadow = "0 1px 2px rgba(0,0,0,.7)";
-    b.textContent = g.label;
-    b.addEventListener("click", () => setGrade(key));
-    host.appendChild(b);
-  }
-}
-
-function wireChipGroups() {
-  $("#size-chips").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-size]");
-    if (b) setSize(b.dataset.size);
-  });
-  $("#layout-chips").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-layout]");
-    if (b) setLayout(b.dataset.layout);
-  });
-  $("#finish-chips").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-finish]");
-    if (b) setFinish(b.dataset.finish, !state.finishes[b.dataset.finish]);
-  });
-  $("#cap-pos").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-pos]");
-    if (b) setCaption({ pos: b.dataset.pos });
-  });
-}
-
-// ── photos ──────────────────────────────────────────────────────────
-
-function wirePhotos() {
-  $("#photo-input").addEventListener("change", (e) => {
-    for (const file of e.target.files) loadFilePhoto(file);
-    e.target.value = "";
-  });
-  $("#fill-all").addEventListener("click", () => {
-    if (!state.photos.length) return;
-    const idx = state.panels[state.selected]?.photo;
-    fillAll(idx >= 0 ? idx : 0);
-  });
-  $("#photo-thumbs").addEventListener("click", (e) => {
-    const kill = e.target.closest(".kill");
-    if (kill) {
-      removePhoto(Number(kill.dataset.i));
-      return;
+  // --- photos ---
+  const input = document.getElementById('photoInput');
+  document.getElementById('addPhotos').addEventListener('click', () => input.click());
+  input.addEventListener('change', async () => {
+    const files = [...input.files];
+    const imgs = await loadImages(files);
+    // fill the empty panels first, then the emptiest reuse in order
+    let slot = project.panels.findIndex((p) => !p.img);
+    for (const img of imgs) {
+      if (slot === -1) slot = 0;
+      assignPhoto(project, slot, img);
+      slot = project.panels.findIndex((p, i) => i > slot && !p.img);
+      if (slot === -1) slot = project.panels.findIndex((p) => !p.img);
     }
-    const t = e.target.closest(".thumb");
-    if (t) setPanel(state.selected, { photo: Number(t.dataset.i) });
+    input.value = '';
+    refreshPanelList(project);
+    emit('photos');
   });
-}
 
-function loadFilePhoto(file) {
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.onload = () => {
-    // Keep the blob URL alive: photo thumbs render straight from it.
-    const i = addPhoto(file.name.replace(/\.[^.]+$/, ""), img);
-    const used = state.panels.some((p) => p.photo >= 0);
-    if (!used) fillAll(i);
-    else setPanel(state.selected, { photo: i });
-  };
-  img.src = url;
-}
-
-// Called by sessions.js when sample photos finish loading.
-export function registerSample(name, img) {
-  const i = addPhoto(name, img, true);
-  return i;
-}
-
-// ── caption ─────────────────────────────────────────────────────────
-
-function wireCaption() {
-  $("#cap-title").addEventListener("input", (e) => setCaption({ title: e.target.value }));
-  $("#cap-sub").addEventListener("input", (e) => setCaption({ sub: e.target.value }));
-  $("#cap-band").addEventListener("change", (e) => setCaption({ band: e.target.checked }));
-  $("#cap-underline").addEventListener("change", (e) => setCaption({ underline: e.target.checked }));
-  $("#cap-scale").addEventListener("input", (e) => setCaption({ scale: Number(e.target.value) }));
-}
-
-// ── panel section ───────────────────────────────────────────────────
-
-function wirePanelControls() {
-  $("#panel-photo").addEventListener("change", (e) => {
-    setPanel(state.selected, { photo: Number(e.target.value) });
-  });
-  $("#panel-zoom").addEventListener("input", (e) => {
-    setPanel(state.selected, { zoom: Number(e.target.value) / 100 });
-  });
-  $("#panel-reset").addEventListener("click", () => {
-    setPanel(state.selected, { cx: 0.5, cy: 0.45, zoom: 1.1 });
-  });
-}
-
-// ── canvas interactions ─────────────────────────────────────────────
-
-function wireCanvas() {
-  let dragging = false;
-  let lastX = 0;
-  let lastY = 0;
-
-  const toCanvas = (e) => {
-    const r = canvas.getBoundingClientRect();
-    return {
-      x: (e.clientX - r.left) * (canvas.width / r.width),
-      y: (e.clientY - r.top) * (canvas.height / r.height),
+  // fill all panels from one photo with auto-varied crops
+  document.getElementById('fillOne').addEventListener('click', () => {
+    const input2 = document.createElement('input');
+    input2.type = 'file';
+    input2.accept = 'image/*';
+    input2.onchange = async () => {
+      const [img] = await loadImages([...input2.files]);
+      if (!img) return;
+      fillAllFromOne(project, img);
+      refreshPanelList(project);
+      emit('fill-one');
     };
-  };
+    input2.click();
+  });
 
-  canvas.addEventListener("pointerdown", (e) => {
-    const S = SIZES[state.size];
-    const pt = toCanvas(e);
-    const slot = slotAt(pt.x, pt.y, state.layout, S.w, S.h, gutterFor(state.layout, S.w, S.h));
-    if (slot < 0) return;
-    selectPanel(slot);
-    dragging = true;
-    lastX = e.clientX;
-    lastY = e.clientY;
+  document.getElementById('shuffleCrops').addEventListener('click', () => {
+    varyCrops(project);
+    emit('vary');
+  });
+
+  // --- layouts ---
+  const grid = document.getElementById('layoutGrid');
+  for (const chip of grid.querySelectorAll('.layout-chip')) {
+    chip.addEventListener('click', () => {
+      syncPanels(project, chip.dataset.layout);
+      project.layout = chip.dataset.layout;
+      markOn(grid, 'layout', project.layout);
+      refreshPanelList(project);
+      emit('layout');
+    });
+  }
+  markOn(grid, 'layout', project.layout);
+
+  // --- grades ---
+  const row = document.getElementById('gradeRow');
+  for (const chip of row.querySelectorAll('.grade-chip')) {
+    chip.addEventListener('click', () => {
+      project.grade = chip.dataset.grade;
+      markOn(row, 'grade', project.grade);
+      emit('grade');
+    });
+  }
+  markOn(row, 'grade', project.grade);
+
+  // --- finishes ---
+  for (const box of document.querySelectorAll('#finishRow input[data-finish]')) {
+    box.checked = !!project.finishes[box.dataset.finish];
+    box.addEventListener('change', () => {
+      project.finishes[box.dataset.finish] = box.checked;
+      emit('finish');
+    });
+  }
+
+  // --- caption ---
+  const bindText = (id, key) => {
+    const el = document.getElementById(id);
+    el.value = project.caption[key];
+    el.addEventListener('input', () => {
+      project.caption[key] = el.value;
+      emit('caption');
+    });
+  };
+  bindText('titleInput', 'title');
+  bindText('subInput', 'sub');
+  bindText('badgeInput', 'badge');
+  for (const id of ['bandTop', 'bandBottom']) {
+    const el = document.getElementById(id);
+    const key = id === 'bandTop' ? 'topBand' : 'bottomBand';
+    el.checked = project.caption[key];
+    el.addEventListener('change', () => {
+      project.caption[key] = el.checked;
+      emit('band');
+    });
+  }
+
+  refreshPanelList(project);
+}
+
+// Fill every panel with one image, each with a deliberately different crop region.
+// Crops favour the upper-centre of the frame where faces live.
+export function fillAllFromOne(project, img) {
+  const spots = [
+    { cx: 0.5, cy: 0.38, zoom: 1 },
+    { cx: 0.4, cy: 0.3, zoom: 1.35 },
+    { cx: 0.62, cy: 0.34, zoom: 1.2 },
+    { cx: 0.5, cy: 0.55, zoom: 1.6 },
+  ];
+  project.panels.forEach((p, i) => {
+    p.img = img;
+    p.photo = img.src;
+    const s = spots[i % spots.length];
+    p.cx = s.cx;
+    p.cy = s.cy;
+    p.zoom = s.zoom;
+  });
+}
+
+// Nudge every filled panel's crop by a deterministic spread so one photo yields
+// visibly different panels.
+export function varyCrops(project) {
+  const drift = [
+    [0.5, 0.38, 1],
+    [0.38, 0.3, 1.3],
+    [0.64, 0.36, 1.18],
+    [0.5, 0.52, 1.55],
+  ];
+  project.panels.forEach((p, i) => {
+    if (!p.img) return;
+    const d = drift[(i + project.panels.length) % drift.length];
+    p.cx = d[0];
+    p.cy = d[1];
+    p.zoom = d[2];
+  });
+}
+
+function loadImages(files) {
+  return Promise.all(
+    files.map((f) => new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(f);
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = url;
+    })),
+  );
+}
+
+// The rail's photo list: one row per panel with its source state.
+export function refreshPanelList(project) {
+  const list = document.getElementById('panelList');
+  list.innerHTML = '';
+  project.panels.forEach((p, i) => {
+    const li = document.createElement('li');
+    if (p.img) li.classList.add('has-photo');
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    const who = document.createElement('span');
+    who.className = 'who';
+    who.textContent = `Panel ${i + 1}`;
+    const what = document.createElement('span');
+    what.className = 'what';
+    what.textContent = p.img ? `photo ${i + 1} loaded` : 'empty';
+    li.append(dot, who, what);
+    list.appendChild(li);
+  });
+}
+
+// Drag / wheel reframing on the preview canvas: the click position maps into the
+// panel under it, and dragging pans that panel's crop.
+export function bindReframe(canvas, project, getScale, onChange) {
+  let drag = null;
+
+  canvas.addEventListener('pointerdown', (e) => {
+    const hit = panelAt(project, canvas, getScale(), e);
+    if (!hit) return;
+    drag = { ...hit, sx: e.clientX, sy: e.clientY, cx: hit.panel.cx, cy: hit.panel.cy };
     canvas.setPointerCapture(e.pointerId);
   });
 
-  canvas.addEventListener("pointermove", (e) => {
-    if (!dragging) return;
-    const S = SIZES[state.size];
-    const p = state.panels[state.selected];
-    const img = p.photo >= 0 ? state.photos[p.photo]?.img : null;
-    if (!img) return;
-    const r = panelPixelRect(state.selected, S);
-    const scale = Math.max(r.w / img.naturalWidth, r.h / img.naturalHeight) * p.zoom;
-    const dw = img.naturalWidth * scale;
-    const dh = img.naturalHeight * scale;
-    const rct = canvas.getBoundingClientRect();
-    const kx = (e.clientX - lastX) * (canvas.width / rct.width) / dw;
-    const ky = (e.clientY - lastY) * (canvas.height / rct.height) / dh;
-    lastX = e.clientX;
-    lastY = e.clientY;
-    setPanel(state.selected, { cx: clamp(p.cx - kx, 0, 1), cy: clamp(p.cy - ky, 0, 1) });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const scale = getScale();
+    const ddx = (e.clientX - drag.sx) / scale / drag.frameW;
+    const ddy = (e.clientY - drag.sy) / scale / drag.frameH;
+    drag.panel.cx = clamp(drag.cx - ddx);
+    drag.panel.cy = clamp(drag.cy - ddy);
+    onChange(project, 'reframe');
   });
 
-  canvas.addEventListener("pointerup", () => { dragging = false; });
+  canvas.addEventListener('pointerup', () => { drag = null; });
+  canvas.addEventListener('pointercancel', () => { drag = null; });
 
-  canvas.addEventListener("wheel", (e) => {
+  canvas.addEventListener('wheel', (e) => {
+    const hit = panelAt(project, canvas, getScale(), e);
+    if (!hit) return;
     e.preventDefault();
-    const p = state.panels[state.selected];
-    if (!p) return;
-    const factor = Math.exp((e.deltaY > 0 ? 1 : -1) * 0.08);
-    setPanel(state.selected, { zoom: clamp(p.zoom * factor, 1, 2.6) });
+    hit.panel.zoom = clamp(hit.panel.zoom * (e.deltaY > 0 ? 0.93 : 1.075), 0.6, 4);
+    onChange(project, 'reframe');
   }, { passive: false });
 }
 
-function panelPixelRect(i, S) {
-  const slots = slotsFor(state.layout);
-  const slot = slots[Math.min(i, slots.length - 1)];
-  return pixelRect(slot, state.layout, S.w, S.h, gutterFor(state.layout, S.w, S.h));
-}
-
-// ── exports ─────────────────────────────────────────────────────────
-
-function wireExports() {
-  document.querySelectorAll("[data-export]").forEach((b) => {
-    b.addEventListener("click", () => exportSize(b.dataset.export));
-  });
-}
-
-async function exportSize(key) {
-  await document.fonts.ready;
-  const S = SIZES[key];
-  const out = renderAt(state, S.w, S.h);
-  const blob = await new Promise((res) => out.toBlob(res, "image/png"));
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `duskline-${S.w}x${S.h}.png`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-// ── preview scaling + control sync ──────────────────────────────────
-
-export function scalePreview() {
-  const S = SIZES[state.size];
-  const box = wrap.getBoundingClientRect();
-  const k = Math.min((box.width - 24) / S.w, (box.height - 24) / S.h, 1);
-  canvas.style.width = `${Math.round(S.w * k)}px`;
-  canvas.style.height = `${Math.round(S.h * k)}px`;
-}
-
-function syncControls() {
-  markOn("#size-chips [data-size]", state.size);
-  markOn("#layout-chips [data-layout]", state.layout);
-  markOn("#grade-chips [data-grade]", state.grade);
-  markOn("#cap-pos [data-pos]", state.caption.pos);
-  for (const [k, v] of Object.entries(state.finishes)) {
-    const chip = document.querySelector(`#finish-chips [data-finish="${k}"]`);
-    if (chip) chip.classList.toggle("on", v);
+// Which panel (if any) sits under the pointer, with its frame in art pixels.
+function panelAt(project, canvas, scale, e) {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) / (scale || 1);
+  const my = (e.clientY - rect.top) / (scale || 1);
+  const { w: W, h: H } = SIZES[project.size] ?? SIZES['1080x1080'];
+  const lay = LAYOUTS[project.layout];
+  const bandPx = H * lay.band;
+  const artH = H - bandPx;
+  for (let i = 0; i < lay.frames.length; i++) {
+    const [fx, fy, fw, fh] = lay.frames[i];
+    const x = fx * W;
+    const y = fy * artH;
+    if (mx >= x && mx <= x + fw * W && my >= y && my <= y + fh * artH) {
+      return { panel: project.panels[i], frameW: fw * W, frameH: fh * artH, index: i };
+    }
   }
-  $("#cap-title").value = state.caption.title;
-  $("#cap-sub").value = state.caption.sub;
-  $("#cap-band").checked = state.caption.band;
-  $("#cap-underline").checked = state.caption.underline;
-  $("#cap-scale").value = state.caption.scale;
-
-  // Panel section follows the selection.
-  const slotCount = slotsFor(state.layout).length;
-  const sel = Math.min(state.selected, slotCount - 1);
-  $("#panel-no").textContent = `${sel + 1} / ${slotCount} · ${LAYOUTS[state.layout].label}`;
-  const p = state.panels[sel];
-  const selEl = $("#panel-photo");
-  selEl.innerHTML = '<option value="-1">— none —</option>' +
-    state.photos.map((ph, i) => `<option value="${i}">${escapeHtml(ph.name)}</option>`).join("");
-  selEl.value = String(p ? p.photo : -1);
-  $("#panel-zoom").value = Math.round((p ? p.zoom : 1.1) * 100);
-
-  // Photo tray.
-  const tray = $("#photo-thumbs");
-  tray.innerHTML = "";
-  state.photos.forEach((ph, i) => {
-    const d = document.createElement("div");
-    d.className = "thumb" + (p && p.photo === i ? " on" : "");
-    d.dataset.i = String(i);
-    d.title = ph.name;
-    d.style.background = `url(${thumbSrc(ph)}) center/cover`;
-    const kill = document.createElement("button");
-    kill.className = "kill";
-    kill.dataset.i = String(i);
-    kill.textContent = "×";
-    d.appendChild(kill);
-    tray.appendChild(d);
-  });
+  return null;
 }
 
-function thumbSrc(ph) {
-  // Samples keep their own src; file photos draw from the decoded image.
-  return ph.sample ? ph.img.src : ph.img.src;
+function clamp(v, lo = 0, hi = 1) {
+  return Math.min(hi, Math.max(lo, v));
 }
 
-function markOn(selector, value) {
-  document.querySelectorAll(selector).forEach((el) => {
-    el.classList.toggle("on", el.dataset.size === value || el.dataset.layout === value ||
-                              el.dataset.grade === value || el.dataset.pos === value);
-  });
-}
-
-function escapeHtml(s) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function markOn(root, attr, key) {
+  for (const el of root.querySelectorAll(`[data-${attr}]`)) {
+    el.classList.toggle('on', el.dataset[attr] === key);
+  }
 }
