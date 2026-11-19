@@ -1,69 +1,64 @@
-// grade.js — Neonpalm colour grades and print finishes. Every grade paints a translucent
-// colour pass over panel art; every finish is a deterministic overlay (seeded noise,
-// fixed patterns) so two exports of one project are pixel-identical.
+// Colour grades and print finishes. A grade stacks a few full-panel passes: a colour wash with a
+// blend mode, a light-leak gradient and a duotone shadow lift. Finishes are the tactile print
+// passes (grain, scanlines, halftone, vignette, hairline frame, chroma split).
 
-// Each grade: a vertical tint gradient (top colour → bottom colour) blended over the
-// photo, plus a filter string Chrome applies while the photo is drawn.
-export const GRADE_PASSES = {
+export const GRADES = {
   sunset: {
-    filter: 'saturate(1.25) contrast(1.06)',
-    top: 'rgba(255, 94, 58, 0.42)',
-    mid: 'rgba(255, 60, 122, 0.22)',
-    bottom: 'rgba(26, 20, 66, 0.34)',
-    wash: 'rgba(255, 138, 76, 0.10)',
+    wash: { color: '#ff7a3c', alpha: 0.34, blend: 'overlay' },
+    light: { from: '#ffcc66', to: '#ff2d78', alpha: 0.5, blend: 'soft-light', angle: 1.57 },
+    lift: { color: '#2a0a3c', alpha: 0.22, blend: 'lighten' },
+    caption: ['#ffd76a', '#ff3d6e'],
+    accent: '#ff3d6e',
+    shadow: '#38001f',
   },
   neon: {
-    filter: 'saturate(1.55) contrast(1.12)',
-    top: 'rgba(255, 44, 168, 0.38)',
-    mid: 'rgba(112, 0, 255, 0.20)',
-    bottom: 'rgba(0, 229, 255, 0.30)',
-    wash: 'rgba(64, 220, 255, 0.10)',
+    wash: { color: '#00e0ff', alpha: 0.30, blend: 'overlay' },
+    light: { from: '#00ffc8', to: '#ff2df0', alpha: 0.52, blend: 'soft-light', angle: 0.9 },
+    lift: { color: '#0b1030', alpha: 0.26, blend: 'lighten' },
+    caption: ['#7df9ff', '#ff2df0'],
+    accent: '#00ffc8',
+    shadow: '#001028',
   },
   heat: {
-    filter: 'saturate(1.35) contrast(1.18) brightness(1.04)',
-    top: 'rgba(255, 196, 0, 0.30)',
-    mid: 'rgba(255, 84, 0, 0.30)',
-    bottom: 'rgba(120, 8, 0, 0.38)',
-    wash: 'rgba(255, 120, 40, 0.12)',
-  },
-  tide: {
-    filter: 'saturate(1.1) contrast(1.05)',
-    top: 'rgba(0, 210, 255, 0.30)',
-    mid: 'rgba(0, 110, 220, 0.22)',
-    bottom: 'rgba(10, 16, 60, 0.40)',
-    wash: 'rgba(70, 230, 255, 0.08)',
+    wash: { color: '#ff3c1f', alpha: 0.38, blend: 'overlay' },
+    light: { from: '#ffb03c', to: '#c8005a', alpha: 0.5, blend: 'soft-light', angle: 1.2 },
+    lift: { color: '#3c0400', alpha: 0.24, blend: 'lighten' },
+    caption: ['#ffe08a', '#ff3c1f'],
+    accent: '#ffb03c',
+    shadow: '#2b0000',
   },
   noir: {
-    filter: 'saturate(0.12) contrast(1.3) brightness(0.96)',
-    top: 'rgba(255, 255, 255, 0.06)',
-    mid: 'rgba(0, 0, 0, 0.10)',
-    bottom: 'rgba(0, 0, 0, 0.34)',
-    wash: 'rgba(210, 190, 255, 0.05)',
+    wash: { color: '#8a97ad', alpha: 0.18, blend: 'saturation' },
+    light: { from: '#f4f7ff', to: '#20242e', alpha: 0.42, blend: 'soft-light', angle: 1.57 },
+    lift: { color: '#101318', alpha: 0.3, blend: 'lighten' },
+    caption: ['#f4f7ff', '#8a97ad'],
+    accent: '#e8ecf4',
+    shadow: '#06070a',
+  },
+  vice: {
+    wash: { color: '#b46bff', alpha: 0.30, blend: 'overlay' },
+    light: { from: '#ffe3f9', to: '#0040ff', alpha: 0.46, blend: 'soft-light', angle: 2.1 },
+    lift: { color: '#18003c', alpha: 0.24, blend: 'lighten' },
+    caption: ['#fff2b0', '#c46bff'],
+    accent: '#00e0ff',
+    shadow: '#12002b',
+  },
+  coral: {
+    wash: { color: '#ff5e94', alpha: 0.30, blend: 'overlay' },
+    light: { from: '#ffd9a0', to: '#3ca6ff', alpha: 0.48, blend: 'soft-light', angle: 2.4 },
+    lift: { color: '#2b0a34', alpha: 0.2, blend: 'lighten' },
+    caption: ['#ffe9d6', '#ff5e94'],
+    accent: '#3ca6ff',
+    shadow: '#26101e',
   },
 };
 
-// Paint one grade pass over a rect. blend colors with 'overlay' so shadows and
-// highlights keep the photo's own contrast.
-export function paintGrade(ctx, x, y, w, h, gradeKey) {
-  const g = GRADE_PASSES[gradeKey];
-  const grad = ctx.createLinearGradient(x, y, x, y + h);
-  grad.addColorStop(0, g.top);
-  grad.addColorStop(0.55, g.mid);
-  grad.addColorStop(1, g.bottom);
-  ctx.save();
-  ctx.globalCompositeOperation = 'overlay';
-  ctx.fillStyle = grad;
-  ctx.fillRect(x, y, w, h);
-  ctx.globalCompositeOperation = 'soft-light';
-  ctx.fillStyle = g.wash;
-  ctx.fillRect(x, y, w, h);
-  ctx.restore();
-}
+export const FINISHES = ['grain', 'scanlines', 'halftone', 'vignette', 'frame', 'chroma'];
 
-// mulberry32 — small deterministic PRNG so grain never changes between exports.
-function mulberry32(seed) {
+/** Seeded PRNG so grain renders identically on every export (determinism). */
+export function mulberry32(seed) {
   let a = seed >>> 0;
-  return function () {
+  return function next() {
     a |= 0; a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
@@ -71,71 +66,35 @@ function mulberry32(seed) {
   };
 }
 
-let grainTile = null;
-
-// One 96px noise tile, generated once per page at a fixed seed and reused tiled.
-function grainPattern(ctx) {
-  if (grainTile) return ctx.createPattern(grainTile, 'repeat');
-  const c = document.createElement('canvas');
-  c.width = 96; c.height = 96;
-  const g = c.getContext('2d');
-  const img = g.createImageData(96, 96);
-  const rnd = mulberry32(0x6c078965);
-  for (let i = 0; i < img.data.length; i += 4) {
-    const v = 110 + Math.floor(rnd() * 72);
-    img.data[i] = v; img.data[i + 1] = v; img.data[i + 2] = v;
-    img.data[i + 3] = 255;
-  }
-  g.putImageData(img, 0, 0);
-  grainTile = c;
-  return ctx.createPattern(grainTile, 'repeat');
-}
-
-export function paintFinishes(ctx, x, y, w, h, finishes, seed) {
-  if (finishes.grain) {
-    ctx.save();
-    ctx.globalCompositeOperation = 'overlay';
-    ctx.globalAlpha = 0.16;
-    ctx.fillStyle = grainPattern(ctx);
-    ctx.translate(x, y);
-    ctx.fillRect(0, 0, w, h);
-    ctx.restore();
-  }
-  if (finishes.scanlines) {
-    ctx.save();
-    ctx.globalAlpha = 0.14;
-    ctx.fillStyle = '#000';
-    const step = Math.max(3, Math.round(h / 320));
-    for (let sy = 0; sy < h; sy += step * 2) ctx.fillRect(x, y + sy, w, step);
-    ctx.restore();
-  }
-  if (finishes.halftone) {
-    ctx.save();
-    ctx.globalCompositeOperation = 'multiply';
-    ctx.globalAlpha = 0.12;
-    ctx.fillStyle = '#300018';
-    const cell = Math.max(10, Math.round(w / 90));
-    const rnd = mulberry32(seed ^ 0x9e3779b9);
-    for (let hy = cell / 2; hy < h; hy += cell) {
-      for (let hx = cell / 2; hx < w; hx += cell) {
-        const r = cell * (0.10 + rnd() * 0.16);
-        ctx.beginPath();
-        ctx.arc(x + hx, y + hy, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    ctx.restore();
-  }
-  if (finishes.vignette) {
-    const vg = ctx.createRadialGradient(
-      x + w / 2, y + h / 2, Math.min(w, h) * 0.42,
-      x + w / 2, y + h / 2, Math.max(w, h) * 0.74,
-    );
-    vg.addColorStop(0, 'rgba(0,0,0,0)');
-    vg.addColorStop(1, 'rgba(5,2,14,0.42)');
-    ctx.save();
-    ctx.fillStyle = vg;
+/** Grade passes drawn over a clipped panel of x,y,w,h. */
+export function applyGrade(ctx, g, x, y, w, h) {
+  if (g.wash) {
+    ctx.globalCompositeOperation = g.wash.blend;
+    ctx.globalAlpha = g.wash.alpha;
+    ctx.fillStyle = g.wash.color;
     ctx.fillRect(x, y, w, h);
-    ctx.restore();
   }
+  if (g.light) {
+    const { from, to, angle } = g.light;
+    const cx = x + w / 2, cy = y + h / 2;
+    const r = Math.max(w, h) * 0.75;
+    const grad = ctx.createLinearGradient(
+      cx - Math.cos(angle) * r, cy - Math.sin(angle) * r,
+      cx + Math.cos(angle) * r, cy + Math.sin(angle) * r,
+    );
+    grad.addColorStop(0, from);
+    grad.addColorStop(1, to);
+    ctx.globalCompositeOperation = g.light.blend;
+    ctx.globalAlpha = g.light.alpha;
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, w, h);
+  }
+  if (g.lift) {
+    ctx.globalCompositeOperation = g.lift.blend;
+    ctx.globalAlpha = g.lift.alpha;
+    ctx.fillStyle = g.lift.color;
+    ctx.fillRect(x, y, w, h);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
 }

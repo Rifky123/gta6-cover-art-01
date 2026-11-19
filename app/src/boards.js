@@ -1,110 +1,70 @@
-// boards.js — Neonpalm project state: post sizes, panel layouts, and the mutable project
-// a session edits. Pure data; rendering lives in render.js, the editor shell in booth.js.
+// Board layouts: how the poster divides into photo panels. Rects are unit coords (0..1) of the
+// whole canvas; the caption band is drawn over the bottom of the poster, and layouts may reserve
+// a little headroom for it via `bias` (how much extra of the last panel the band eats).
 
-export const SIZES = {
-  '1080x1080': { w: 1080, h: 1080, label: 'square' },
-  '1080x1350': { w: 1080, h: 1350, label: 'portrait' },
-  '1920x1080': { w: 1920, h: 1080, label: 'wide' },
-};
-
-// Every layout is a set of panel frames, fractions of the art area left after the
-// caption band. Frames are [x, y, w, h] in unit space; the lettering takes the rest.
-// `band` reserves the bottom strip (fraction of height) for the caption.
 export const LAYOUTS = {
-  quad: {
-    label: 'Quartet 2×2',
-    band: 0.30,
-    frames: [
-      [0, 0, 0.5, 0.5],
-      [0.5, 0, 0.5, 0.5],
-      [0, 0.5, 0.5, 0.5],
-      [0.5, 0.5, 0.5, 0.5],
-    ],
+  solo: {
+    name: 'Solo',
+    panels: [{ x: 0, y: 0, w: 1, h: 1, k: 1.0 }],
+    bias: 0.26,
   },
-  trio: {
-    label: 'Trio collage',
-    band: 0.28,
-    frames: [
-      [0, 0, 0.62, 1],
-      [0.62, 0, 0.38, 0.5],
-      [0.62, 0.5, 0.38, 0.5],
+  diptych: {
+    name: 'Diptych',
+    panels: [
+      { x: 0, y: 0, w: 1, h: 0.62, k: 1.0 },
+      { x: 0, y: 0.63, w: 1, h: 0.37, k: 0.9 },
     ],
+    bias: 0.5,
   },
-  stack: {
-    label: 'Stacked trilogy',
-    band: 0.26,
-    frames: [
-      [0, 0, 1, 0.34],
-      [0, 0.34, 1, 0.33],
-      [0, 0.67, 1, 0.33],
+  trilogy: {
+    name: 'Stacked III',
+    panels: [
+      { x: 0, y: 0, w: 1, h: 0.46, k: 1.0 },
+      { x: 0, y: 0.47, w: 1, h: 0.30, k: 0.88 },
+      { x: 0, y: 0.78, w: 1, h: 0.22, k: 0.78 },
     ],
+    bias: 0.95,
   },
-  split: {
-    label: 'Diptych',
-    band: 0.30,
-    frames: [
-      [0, 0, 0.5, 1],
-      [0.5, 0, 0.5, 1],
+  quartet: {
+    name: 'Quartet 2×2',
+    panels: [
+      { x: 0, y: 0, w: 0.5, h: 0.5, k: 1.0 },
+      { x: 0.51, y: 0, w: 0.49, h: 0.5, k: 0.94 },
+      { x: 0, y: 0.51, w: 0.49, h: 0.49, k: 0.9 },
+      { x: 0.51, y: 0.51, w: 0.49, h: 0.49, k: 0.86 },
     ],
+    bias: 0.95,
   },
-  banner: {
-    label: 'Solo banner',
-    band: 0.32,
-    frames: [
-      [0, 0, 1, 1],
+  skyline: {
+    name: 'Skyline',
+    panels: [
+      { x: 0, y: 0, w: 1, h: 0.55, k: 1.0 },
+      { x: 0, y: 0.56, w: 0.55, h: 0.44, k: 0.9 },
+      { x: 0.56, y: 0.56, w: 0.44, h: 0.44, k: 0.82 },
     ],
+    bias: 0.95,
+  },
+  marquee: {
+    name: 'Marquee',
+    panels: [
+      { x: 0, y: 0, w: 0.58, h: 1, k: 1.0 },
+      { x: 0.59, y: 0, w: 0.41, h: 0.56, k: 0.9 },
+      { x: 0.59, y: 0.57, w: 0.41, h: 0.43, k: 0.8 },
+    ],
+    bias: 0.9,
   },
 };
 
-export const GRADES = ['sunset', 'neon', 'heat', 'tide', 'noir'];
-export const FINISHES = ['grain', 'scanlines', 'halftone', 'vignette', 'frame'];
-
-// A fresh project: four panels ready for photos, sunset grade, grain + vignette on.
-export function freshProject() {
-  return {
-    size: '1920x1080',
-    layout: 'quad',
-    grade: 'sunset',
-    finishes: { grain: true, scanlines: false, halftone: false, vignette: true, frame: true },
-    caption: {
-      title: 'PALM CITY',
-      sub: 'WELCOME TO THE COAST',
-      badge: 'EST. 2026',
-      topBand: true,
-      bottomBand: true,
-    },
-    panels: [], // filled by syncPanels when a layout is picked
-  };
+export function panelCount(layoutId) {
+  return LAYOUTS[layoutId].panels.length;
 }
 
-// Give a photo slot to every frame of the current layout, keeping any photo the
-// user already placed and its crop, and seeding a default crop for new panels.
-export function syncPanels(project, layoutKey) {
-  const frames = LAYOUTS[layoutKey].frames;
-  const next = [];
-  for (let i = 0; i < frames.length; i++) {
-    const old = project.panels[i];
-    next.push({
-      photo: old ? old.photo : null,
-      img: old ? old.img : null,
-      // crop center in [0,1] image space, zoom relative to cover-fit
-      cx: old ? old.cx : 0.5,
-      cy: old ? old.cy : 0.5,
-      zoom: old ? old.zoom : 1,
-      seed: (i * 73 + 11) % 97,
-    });
-  }
-  project.panels = next;
-  return project;
-}
-
-// Swap a panel's photo and reset its crop to a fresh center-cover.
-export function assignPhoto(project, panelIndex, img) {
-  const p = project.panels[panelIndex];
-  if (!p) return;
-  p.photo = img.src;
-  p.img = img;
-  p.cx = 0.5;
-  p.cy = 0.5;
-  p.zoom = 1;
+/** Panel rects in pixels for a canvas of w×h. */
+export function panelRects(layoutId, w, h) {
+  return LAYOUTS[layoutId].panels.map((p) => ({
+    x: Math.round(p.x * w),
+    y: Math.round(p.y * h),
+    w: Math.round(p.w * w),
+    h: Math.round(p.h * h),
+  }));
 }
