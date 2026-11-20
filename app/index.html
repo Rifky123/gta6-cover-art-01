@@ -1,91 +1,65 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PALMFORGE — GTA-style cover art maker</title>
-<link rel="stylesheet" href="./style.css">
+<title>SUNGRID — Multi-Panel Poster Studio</title>
+<link rel="stylesheet" href="style.css">
+<link rel="preload" href="fonts/Anton-Regular.ttf" as="font" type="font/ttf" crossorigin>
 </head>
 <body>
-<main class="booth">
-  <aside class="rack" id="rack">
-    <header class="brand">
-      <h1>PALMFORGE</h1>
-      <p class="tag">Forge your poster. Vice-grade, multi-panel.</p>
-    </header>
-
-    <section class="group">
-      <h2>Poster size</h2>
-      <div class="seg" id="sizeSeg" role="radiogroup">
-        <button class="segbtn" data-w="1080" data-h="1080" type="button">Square 1080</button>
-        <button class="segbtn" data-w="1080" data-h="1350" type="button">Portrait 1080×1350</button>
-        <button class="segbtn" data-w="1920" data-h="1080" type="button">Wide 1920×1080</button>
+<div id="shell">
+  <header id="topbar">
+    <div id="brand">
+      <span id="brand-mark">SUN</span><span id="brand-mark-2">GRID</span>
+      <span id="brand-sub">multi-panel poster studio</span>
+    </div>
+    <div id="size-switch" role="group" aria-label="Export size">
+      <button class="size-btn" data-w="1080" data-h="1080" type="button">1:1 · 1080</button>
+      <button class="size-btn" data-w="1080" data-h="1350" type="button">4:5 · 1080×1350</button>
+      <button class="size-btn is-active" data-w="1920" data-h="1080" type="button">16:9 · 1920×1080</button>
+    </div>
+    <button id="export-btn" type="button">EXPORT PNG</button>
+  </header>
+  <div id="workspace">
+    <aside id="rail">
+      <section class="tool" id="tool-photos">
+        <h2 class="tool-head">1 · Photos</h2>
+        <label class="drop" id="drop">
+          <input id="photo-input" type="file" accept="image/*" multiple>
+          <span class="drop-label">Drop or click to load photos</span>
+          <span class="drop-hint">stays on your machine</span>
+        </label>
+        <div id="thumbs" class="thumbs"></div>
+        <button id="fill-one" class="ghost-btn" type="button" title="Spread one photo across every panel with varied crops">FILL ALL PANELS · ONE PHOTO</button>
+      </section>
+      <section class="tool" id="tool-layout">
+        <h2 class="tool-head">2 · Panels</h2>
+        <div id="layouts" class="layout-grid"></div>
+      </section>
+      <section class="tool" id="tool-grade">
+        <h2 class="tool-head">3 · Grade</h2>
+        <div id="grades" class="chip-row"></div>
+        <h2 class="tool-head">Finish</h2>
+        <div id="finishes" class="chip-row"></div>
+      </section>
+      <section class="tool" id="tool-caption">
+        <h2 class="tool-head">4 · Caption</h2>
+        <input id="cap-main" class="field" type="text" maxlength="24" placeholder="MAIN TITLE">
+        <input id="cap-sub" class="field" type="text" maxlength="48" placeholder="sub line">
+        <div class="chip-row" id="cap-colors"></div>
+        <label class="check"><input id="band-on" type="checkbox" checked> top & bottom band</label>
+        <input id="band-text" class="field" type="text" maxlength="64" placeholder="band text">
+      </section>
+    </aside>
+    <main id="stage">
+      <div id="stage-inner">
+        <canvas id="preview" width="1920" height="1080"></canvas>
+        <p id="stage-hint">drag a panel to reframe · wheel to zoom · click a thumb to target a panel</p>
       </div>
-    </section>
-
-    <section class="group">
-      <h2>Panel layout</h2>
-      <div class="seg wrap" id="layoutSeg">
-        <button class="segbtn" data-layout="solo" type="button">Solo</button>
-        <button class="segbtn" data-layout="diptych" type="button">Diptych</button>
-        <button class="segbtn" data-layout="trilogy" type="button">Stacked III</button>
-        <button class="segbtn" data-layout="quartet" type="button">Quartet 2×2</button>
-        <button class="segbtn" data-layout="skyline" type="button">Skyline</button>
-        <button class="segbtn" data-layout="marquee" type="button">Marquee</button>
-      </div>
-    </section>
-
-    <section class="group">
-      <h2>Photos</h2>
-      <label class="btn wide" for="photoInput">+ Add photo(s)</label>
-      <input id="photoInput" type="file" accept="image/*" multiple hidden>
-      <button class="btn wide ghost" id="fillAll" type="button">Fill all panels from one photo</button>
-      <ul class="photoList" id="photoList"></ul>
-    </section>
-
-    <section class="group">
-      <h2>Colour grade</h2>
-      <div class="seg wrap" id="gradeSeg">
-        <button class="segbtn" data-grade="sunset" type="button">Sunset</button>
-        <button class="segbtn" data-grade="neon" type="button">Neon</button>
-        <button class="segbtn" data-grade="heat" type="button">Heat</button>
-        <button class="segbtn" data-grade="noir" type="button">Noir</button>
-        <button class="segbtn" data-grade="vice" type="button">Vice</button>
-        <button class="segbtn" data-grade="coral" type="button">Coral</button>
-      </div>
-      <h2>Finish</h2>
-      <div class="chips" id="finishChips">
-        <label><input type="checkbox" data-finish="grain"> Film grain</label>
-        <label><input type="checkbox" data-finish="scanlines"> Scanlines</label>
-        <label><input type="checkbox" data-finish="halftone"> Halftone</label>
-        <label><input type="checkbox" data-finish="vignette"> Vignette</label>
-        <label><input type="checkbox" data-finish="frame"> Hairline frame</label>
-        <label><input type="checkbox" data-finish="chroma"> Chroma split</label>
-      </div>
-    </section>
-
-    <section class="group">
-      <h2>Caption</h2>
-      <input id="captionInput" type="text" maxlength="28" value="PALM DRIVE" placeholder="Main caption">
-      <input id="sublineInput" type="text" maxlength="60" value="The coast remembers everything" placeholder="Sub-line (optional)">
-      <div class="chips" id="captionChips">
-        <label><input type="checkbox" data-cap="italic" checked> Skew</label>
-        <label><input type="checkbox" data-cap="band" checked> Bottom band</label>
-        <label><input type="checkbox" data-cap="topbar" checked> Top bar</label>
-      </div>
-    </section>
-
-    <footer class="export">
-      <button class="btn wide primary" id="exportBtn" type="button">Export PNG</button>
-      <p class="status" id="status" role="status"></p>
-    </footer>
-  </aside>
-
-  <section class="stage">
-    <canvas id="stage" aria-label="Live cover preview"></canvas>
-    <p class="hint" id="hint">Drag a panel to reframe · scroll to zoom · click a panel to select</p>
-  </section>
-</main>
-<script type="module" src="./src/main.js"></script>
+    </main>
+  </div>
+</div>
+<script type="module" src="src/main.js"></script>
 </body>
 </html>
