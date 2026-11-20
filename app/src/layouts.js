@@ -1,81 +1,71 @@
-// SUNGRID panel layouts. Each layout is a named list of rectangles in unit
-// space (x, y, w, h in 0..1) that maps onto the poster canvas.
+// HEATSPLIT panel layouts. Each layout gives panel rects in normalized
+// poster coordinates (x, y, w, h with 0..1 on both axes), so the same
+// geometry works at square, portrait and wide export sizes. The `stack`
+// flag marks layouts whose caption plate sits inside the lowest panel.
 
 export const LAYOUTS = [
   {
     id: 'quartet',
-    name: 'Quartet 2×2',
-    mini: [2, 2],
+    name: 'Quartet 2x2',
     panels: [
-      { x: 0, y: 0, w: 0.5, h: 0.5 },
-      { x: 0.5, y: 0, w: 0.5, h: 0.5 },
-      { x: 0, y: 0.5, w: 0.5, h: 0.5 },
-      { x: 0.5, y: 0.5, w: 0.5, h: 0.5 },
+      { x: 0.012, y: 0.012, w: 0.488, h: 0.538 },
+      { x: 0.500, y: 0.012, w: 0.488, h: 0.538 },
+      { x: 0.012, y: 0.550, w: 0.488, h: 0.288 },
+      { x: 0.500, y: 0.550, w: 0.488, h: 0.288 },
     ],
+    caption: { y: 0.855, size: 0.145 },
   },
   {
     id: 'trilogy',
-    name: 'Stacked Trilogy',
-    mini: [1, 3],
+    name: 'Stacked trilogy',
     panels: [
-      { x: 0, y: 0, w: 1, h: 0.34 },
-      { x: 0, y: 0.34, w: 1, h: 0.33 },
-      { x: 0, y: 0.67, w: 1, h: 0.33 },
+      { x: 0.012, y: 0.012, w: 0.976, h: 0.30 },
+      { x: 0.012, y: 0.324, w: 0.976, h: 0.24 },
+      { x: 0.012, y: 0.576, w: 0.976, h: 0.20 },
     ],
+    caption: { y: 0.845, size: 0.130 },
   },
   {
     id: 'diptych',
-    name: 'Diptych',
-    mini: [2, 1],
+    name: 'Diptych split',
     panels: [
-      { x: 0, y: 0, w: 0.5, h: 1 },
-      { x: 0.5, y: 0, w: 0.5, h: 1 },
+      { x: 0.012, y: 0.012, w: 0.488, h: 0.700 },
+      { x: 0.500, y: 0.012, w: 0.488, h: 0.700 },
     ],
+    caption: { y: 0.845, size: 0.140 },
   },
   {
-    id: 'tower',
-    name: 'Tower Column',
-    mini: [1, 2],
+    id: 'hero',
+    name: 'Hero solo',
     panels: [
-      { x: 0, y: 0, w: 1, h: 0.5 },
-      { x: 0, y: 0.5, w: 1, h: 0.5 },
+      { x: 0.012, y: 0.012, w: 0.976, h: 0.700 },
     ],
+    caption: { y: 0.850, size: 0.150 },
   },
   {
-    id: 'hero-strip',
-    name: 'Hero + Strip',
-    mini: [1, 2],
+    id: 'feature',
+    name: 'Feature + duo',
     panels: [
-      { x: 0, y: 0, w: 1, h: 0.62 },
-      { x: 0, y: 0.62, w: 0.34, h: 0.38 },
-      { x: 0.34, y: 0.62, w: 0.33, h: 0.38 },
-      { x: 0.67, y: 0.62, w: 0.33, h: 0.38 },
+      { x: 0.012, y: 0.012, w: 0.976, h: 0.430 },
+      { x: 0.012, y: 0.442, w: 0.482, h: 0.300 },
+      { x: 0.506, y: 0.442, w: 0.482, h: 0.300 },
     ],
+    caption: { y: 0.848, size: 0.135 },
   },
   {
-    id: 'solo',
-    name: 'Solo Banner',
-    mini: [1, 1],
-    panels: [{ x: 0, y: 0, w: 1, h: 1 }],
+    id: 'strip',
+    name: 'Frame strip',
+    panels: [
+      { x: 0.060, y: 0.040, w: 0.420, h: 0.300 },
+      { x: 0.520, y: 0.090, w: 0.420, h: 0.300 },
+      { x: 0.060, y: 0.420, w: 0.420, h: 0.300 },
+      { x: 0.520, y: 0.470, w: 0.420, h: 0.300 },
+    ],
+    caption: { y: 0.850, size: 0.140 },
+    staggered: true,
   },
 ];
 
-// Panels get a small frame gap so the poster reads as separate plates.
-export const PANEL_GAP = 10;
-
 export function layoutById(id) {
-  return LAYOUTS.find((l) => l.id === id) || LAYOUTS[0];
-}
-
-// Map a unit rect to canvas pixels, inset by the gap on each axis.
-export function panelRect(unit, W, H, gap) {
-  const g = gap == null ? PANEL_GAP : gap;
-  const x = Math.round(unit.x * (W - g * 2)) + g;
-  const y = Math.round(unit.y * (H - g * 2)) + g;
-  return {
-    x,
-    y,
-    w: Math.max(1, Math.round(unit.w * (W - g * 2))),
-    h: Math.max(1, Math.round(unit.h * (H - g * 2))),
-  };
+  return LAYOUTS.find((l) => l.id === id) ?? LAYOUTS[0];
 }

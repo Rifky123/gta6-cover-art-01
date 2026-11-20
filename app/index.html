@@ -3,62 +3,86 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SUNGRID — Multi-Panel Poster Studio</title>
+<title>HEATSPLIT — multi-panel cover studio</title>
 <link rel="stylesheet" href="style.css">
-<link rel="preload" href="fonts/Anton-Regular.ttf" as="font" type="font/ttf" crossorigin>
 </head>
 <body>
 <div id="shell">
   <header id="topbar">
     <div id="brand">
-      <span id="brand-mark">SUN</span><span id="brand-mark-2">GRID</span>
-      <span id="brand-sub">multi-panel poster studio</span>
+      <span id="brand-mark">HS</span>
+      <span id="brand-name">HEATSPLIT</span>
+      <span id="brand-sub">multi-panel cover studio</span>
     </div>
-    <div id="size-switch" role="group" aria-label="Export size">
-      <button class="size-btn" data-w="1080" data-h="1080" type="button">1:1 · 1080</button>
-      <button class="size-btn" data-w="1080" data-h="1350" type="button">4:5 · 1080×1350</button>
-      <button class="size-btn is-active" data-w="1920" data-h="1080" type="button">16:9 · 1920×1080</button>
+    <div id="size-switch" class="seg" role="group" aria-label="Export size">
+      <button class="seg-btn" data-size="1080x1080">Square 1080</button>
+      <button class="seg-btn" data-size="1080x1350">Portrait 1080&times;1350</button>
+      <button class="seg-btn" data-size="1920x1080">Wide 1920</button>
     </div>
-    <button id="export-btn" type="button">EXPORT PNG</button>
+    <div id="topbar-actions">
+      <button id="btn-demo" class="ghost-btn" title="Load the sample photos">Load samples</button>
+      <button id="btn-export" class="accent-btn">Export PNG</button>
+    </div>
   </header>
-  <div id="workspace">
-    <aside id="rail">
-      <section class="tool" id="tool-photos">
-        <h2 class="tool-head">1 · Photos</h2>
-        <label class="drop" id="drop">
-          <input id="photo-input" type="file" accept="image/*" multiple>
-          <span class="drop-label">Drop or click to load photos</span>
-          <span class="drop-hint">stays on your machine</span>
-        </label>
-        <div id="thumbs" class="thumbs"></div>
-        <button id="fill-one" class="ghost-btn" type="button" title="Spread one photo across every panel with varied crops">FILL ALL PANELS · ONE PHOTO</button>
-      </section>
-      <section class="tool" id="tool-layout">
-        <h2 class="tool-head">2 · Panels</h2>
-        <div id="layouts" class="layout-grid"></div>
-      </section>
-      <section class="tool" id="tool-grade">
-        <h2 class="tool-head">3 · Grade</h2>
-        <div id="grades" class="chip-row"></div>
-        <h2 class="tool-head">Finish</h2>
-        <div id="finishes" class="chip-row"></div>
-      </section>
-      <section class="tool" id="tool-caption">
-        <h2 class="tool-head">4 · Caption</h2>
-        <input id="cap-main" class="field" type="text" maxlength="24" placeholder="MAIN TITLE">
-        <input id="cap-sub" class="field" type="text" maxlength="48" placeholder="sub line">
-        <div class="chip-row" id="cap-colors"></div>
-        <label class="check"><input id="band-on" type="checkbox" checked> top & bottom band</label>
-        <input id="band-text" class="field" type="text" maxlength="64" placeholder="band text">
-      </section>
-    </aside>
-    <main id="stage">
-      <div id="stage-inner">
-        <canvas id="preview" width="1920" height="1080"></canvas>
-        <p id="stage-hint">drag a panel to reframe · wheel to zoom · click a thumb to target a panel</p>
+
+  <main id="workbench">
+    <section id="stage">
+      <div id="stage-frame">
+        <canvas id="poster" width="1080" height="1080"></canvas>
       </div>
-    </main>
-  </div>
+      <p id="stage-hint">Drag inside a panel to reframe &middot; wheel to zoom</p>
+    </section>
+
+    <aside id="panel-rail">
+      <div class="rail-scroll">
+        <section class="ctl-group">
+          <h2>Photos</h2>
+          <div id="photo-tray"></div>
+          <div class="row">
+            <button id="btn-add" class="ghost-btn wide">Add photo&hellip;</button>
+            <input id="file-add" type="file" accept="image/*" multiple hidden>
+          </div>
+          <div class="row">
+            <button id="btn-fill" class="ghost-btn wide" title="Fill every panel with varied crops of one photo">Fill all panels from photo</button>
+          </div>
+        </section>
+
+        <section class="ctl-group">
+          <h2>Layout</h2>
+          <div id="layout-grid" class="tile-grid"></div>
+        </section>
+
+        <section class="ctl-group">
+          <h2>Grade</h2>
+          <div id="grade-row" class="chip-row"></div>
+          <h2 class="gap-top">Finishes</h2>
+          <div id="finish-row" class="chip-row"></div>
+        </section>
+
+        <section class="ctl-group">
+          <h2>Caption</h2>
+          <label class="fld"><span>Title</span><input id="cap-title" type="text" maxlength="40" value="SUNSET SYNDICATE"></label>
+          <label class="fld"><span>Sub-line</span><input id="cap-sub" type="text" maxlength="60" value="Vice Coast &middot; Chapter One"></label>
+          <label class="fld"><span>Top band text</span><input id="band-top" type="text" maxlength="48" value="HEATSPLIT ORIGINALS"></label>
+          <label class="fld"><span>Bottom band text</span><input id="band-bottom" type="text" maxlength="48" value="EPISODE 01 &middot; THE VICE COAST RUN"></label>
+          <div class="row">
+            <label class="chk"><input id="band-top-on" type="checkbox" checked> top band</label>
+            <label class="chk"><input id="band-bottom-on" type="checkbox" checked> bottom band</label>
+          </div>
+        </section>
+
+        <section class="ctl-group">
+          <h2>Export</h2>
+          <div class="row wrap">
+            <button class="accent-btn slim" data-export="1080x1080">1080&times;1080</button>
+            <button class="accent-btn slim" data-export="1080x1350">1080&times;1350</button>
+            <button class="accent-btn slim" data-export="1920x1080">1920&times;1080</button>
+          </div>
+          <p class="tiny">PNG downloads, rendered at true size.</p>
+        </section>
+      </div>
+    </aside>
+  </main>
 </div>
 <script type="module" src="src/main.js"></script>
 </body>

@@ -1,224 +1,211 @@
-// SUNGRID colour grades and print finishes.
-// Every grade draws fast canvas composites over a panel photo: no per-pixel loops.
+// HEATSPLIT colour grades + finishes. A grade is a stack of pixel passes
+// applied to each panel's photo before compositing; a finish is a whole-
+// poster overlay. All canvas 2D, no filters that would break offline.
 
 export const GRADES = [
-  { id: 'sunset', label: 'Sunset', swatch: '#ff7a3c' },
-  { id: 'neon', label: 'Neon', swatch: '#ff36c7' },
-  { id: 'heat', label: 'Heat', swatch: '#ff2d2d' },
-  { id: 'ice', label: 'Ice', swatch: '#5ad0ff' },
-  { id: 'noir', label: 'Noir', swatch: '#9a9a9a' },
-  { id: 'day', label: 'Day', swatch: '#ffd97a' },
+  {
+    id: 'sunset',
+    name: 'Sunset',
+    // warm gold mids, magenta accents, deep plum shadows
+    shadow: [40, 16, 58],
+    mid: [236, 128, 84],
+    high: [255, 205, 130],
+    lift: 0.07,
+    sat: 1.22,
+  },
+  {
+    id: 'neon',
+    name: 'Neon',
+    // hard magenta/cyan duotone lean
+    shadow: [12, 6, 46],
+    mid: [228, 52, 148],
+    high: [92, 232, 255],
+    lift: 0.10,
+    sat: 1.32,
+  },
+  {
+    id: 'heat',
+    name: 'Heat',
+    // molten orange blast, deep brown blacks
+    shadow: [40, 14, 8],
+    mid: [232, 112, 42],
+    high: [255, 216, 140],
+    lift: 0.05,
+    sat: 1.15,
+  },
+  {
+    id: 'noir',
+    name: 'Noir',
+    // cold silver mono with crushed blacks
+    shadow: [10, 12, 18],
+    mid: [132, 136, 146],
+    high: [238, 240, 246],
+    lift: 0.03,
+    sat: 0.0,
+    contrast: 1.14,
+  },
+  {
+    id: 'vice',
+    name: 'Vice',
+    // teal sea + pink sky pop
+    shadow: [18, 44, 74],
+    mid: [96, 158, 214],
+    high: [255, 196, 214],
+    lift: 0.08,
+    sat: 1.24,
+  },
+  {
+    id: 'gold',
+    name: 'Gold',
+    // late-afternoon amber, gentle
+    shadow: [44, 26, 10],
+    mid: [206, 138, 58],
+    high: [255, 238, 178],
+    lift: 0.06,
+    sat: 1.10,
+  },
 ];
 
 export const FINISHES = [
-  { id: 'grain', label: 'Grain' },
-  { id: 'scanlines', label: 'Scanlines' },
-  { id: 'halftone', label: 'Halftone' },
-  { id: 'vignette', label: 'Vignette' },
-  { id: 'frame', label: 'Frame' },
+  { id: 'grain', name: 'Grain' },
+  { id: 'scanlines', name: 'Scanlines' },
+  { id: 'halftone', name: 'Halftone' },
+  { id: 'vignette', name: 'Vignette' },
+  { id: 'frame', name: 'Frame' },
+  { id: 'bloom', name: 'Bloom' },
 ];
 
-export const DEFAULT_FINISHES = ['grain', 'vignette', 'frame'];
-
-// Warm dusk wash: orange highlights, magenta-violet shadows.
-function sunsetWash(ctx, x, y, w, h) {
-  const sky = ctx.createLinearGradient(x, y, x, y + h);
-  sky.addColorStop(0, 'rgba(46,16,92,0.55)');
-  sky.addColorStop(0.45, 'rgba(255,90,60,0.34)');
-  sky.addColorStop(0.8, 'rgba(255,170,60,0.42)');
-  sky.addColorStop(1, 'rgba(255,220,120,0.30)');
-  ctx.globalCompositeOperation = 'overlay';
-  ctx.fillStyle = sky;
-  ctx.fillRect(x, y, w, h);
-  ctx.globalCompositeOperation = 'soft-light';
-  ctx.fillStyle = 'rgba(255,60,140,0.28)';
-  ctx.fillRect(x, y, w, h);
-  ctx.globalCompositeOperation = 'source-over';
+// Deterministic PRNG (mulberry32) so exported PNGs never drift between runs.
+export function makeRng(seed) {
+  let a = seed >>> 0;
+  return function next() {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
-// Electric duotone: cyan light, magenta shadow.
-function neonWash(ctx, x, y, w, h) {
-  ctx.globalCompositeOperation = 'overlay';
-  const beam = ctx.createLinearGradient(x, y, x, y + h);
-  beam.addColorStop(0, 'rgba(0,230,255,0.5)');
-  beam.addColorStop(1, 'rgba(255,20,190,0.5)');
-  ctx.fillStyle = beam;
-  ctx.fillRect(x, y, w, h);
-  ctx.globalCompositeOperation = 'soft-light';
-  ctx.fillStyle = 'rgba(120,0,255,0.35)';
-  ctx.fillRect(x, y, w, h);
-  ctx.globalCompositeOperation = 'source-over';
-}
+const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
-function heatWash(ctx, x, y, w, h) {
-  ctx.globalCompositeOperation = 'overlay';
-  const fire = ctx.createLinearGradient(x, y, x, y + h);
-  fire.addColorStop(0, 'rgba(120,0,0,0.45)');
-  fire.addColorStop(0.6, 'rgba(255,40,0,0.4)');
-  fire.addColorStop(1, 'rgba(255,200,40,0.35)');
-  ctx.fillStyle = fire;
-  ctx.fillRect(x, y, w, h);
-  ctx.globalCompositeOperation = 'source-over';
-}
-
-function iceWash(ctx, x, y, w, h) {
-  ctx.globalCompositeOperation = 'overlay';
-  const cool = ctx.createLinearGradient(x, y, x, y + h);
-  cool.addColorStop(0, 'rgba(40,80,200,0.4)');
-  cool.addColorStop(1, 'rgba(140,240,255,0.4)');
-  ctx.fillStyle = cool;
-  ctx.fillRect(x, y, w, h);
-  ctx.globalCompositeOperation = 'soft-light';
-  ctx.fillStyle = 'rgba(220,245,255,0.22)';
-  ctx.fillRect(x, y, w, h);
-  ctx.globalCompositeOperation = 'source-over';
-}
-
-function noirWash(ctx, x, y, w, h) {
-  ctx.globalCompositeOperation = 'saturation';
-  ctx.fillStyle = '#808080';
-  ctx.fillRect(x, y, w, h);
-  ctx.globalCompositeOperation = 'overlay';
-  const ink = ctx.createLinearGradient(x, y, x, y + h);
-  ink.addColorStop(0, 'rgba(255,255,255,0.18)');
-  ink.addColorStop(1, 'rgba(0,0,0,0.34)');
-  ctx.fillStyle = ink;
-  ctx.fillRect(x, y, w, h);
-  ctx.globalCompositeOperation = 'source-over';
-}
-
-function dayWash(ctx, x, y, w, h) {
-  ctx.globalCompositeOperation = 'soft-light';
-  ctx.fillStyle = 'rgba(255,215,130,0.35)';
-  ctx.fillRect(x, y, w, h);
-  ctx.globalCompositeOperation = 'overlay';
-  const pop = ctx.createLinearGradient(x, y, x, y + h);
-  pop.addColorStop(0, 'rgba(90,160,255,0.22)');
-  pop.addColorStop(1, 'rgba(255,180,90,0.22)');
-  ctx.fillStyle = pop;
-  ctx.fillRect(x, y, w, h);
-  ctx.globalCompositeOperation = 'source-over';
-}
-
-const WASH = {
-  sunset: sunsetWash, neon: neonWash, heat: heatWash,
-  ice: iceWash, noir: noirWash, day: dayWash,
-};
-
-// Per-grade base filter applied while the photo is drawn.
-const DRAW_FILTER = {
-  sunset: 'saturate(1.35) contrast(1.06)',
-  neon: 'saturate(1.25) contrast(1.12)',
-  heat: 'saturate(1.3) contrast(1.08)',
-  ice: 'saturate(1.1) contrast(1.05)',
-  noir: 'grayscale(1) contrast(1.18) brightness(1.02)',
-  day: 'saturate(1.15) contrast(1.02)',
-};
-
-export function gradeFilter(id) {
-  return DRAW_FILTER[id] || 'none';
-}
-
-export function drawWash(ctx, id, x, y, w, h) {
-  const wash = WASH[id];
-  if (wash) wash(ctx, x, y, w, h);
-}
-
-// ---- finishes ----------------------------------------------------------
-
-// One shared noise tile; deterministic seed so exports repeat exactly.
-let grainTile = null;
-function grainPattern(ctx) {
-  if (grainTile && grainTile.owner === ctx) return grainTile.pat;
-  const tile = document.createElement('canvas');
-  tile.width = 128; tile.height = 128;
-  const tctx = tile.getContext('2d');
-  const img = tctx.createImageData(128, 128);
-  let seed = 0x9e3779b9;
-  for (let i = 0; i < img.data.length; i += 4) {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    const v = 128 + ((seed >>> 16) / 65535 - 0.5) * 190;
-    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
-    img.data[i + 3] = 255;
+// Tri-tone map: shadows pull to shadow[], highlights to high[], mids to mid[].
+export function applyGrade(ctx, w, h, grade) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  const [sr, sg, sb] = grade.shadow;
+  const [mr, mg, mb] = grade.mid;
+  const [hr, hg, hb] = grade.high;
+  const sat = grade.sat ?? 1;
+  const con = grade.contrast ?? 1;
+  const lift = grade.lift ?? 0;
+  for (let i = 0; i < d.length; i += 4) {
+    let r = d[i] / 255, g = d[i + 1] / 255, b = d[i + 2] / 255;
+    // grayscale luminance drives the tri-tone blend
+    const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    let tr, tg, tb;
+    if (l < 0.5) {
+      const t = l / 0.5;
+      tr = sr + (mr - sr) * t;
+      tg = sg + (mg - sg) * t;
+      tb = sb + (mb - sb) * t;
+    } else {
+      const t = (l - 0.5) / 0.5;
+      tr = mr + (hr - mr) * t;
+      tg = mg + (hg - mg) * t;
+      tb = mb + (hb - mb) * t;
+    }
+    // mix: keep most of the photo's own chroma, pull the tone map over it
+    const mix = 0.46;
+    r = r + (tr / 255 - r) * mix;
+    g = g + (tg / 255 - g) * mix;
+    b = b + (tb / 255 - b) * mix;
+    // saturation tweak
+    if (sat !== 1) {
+      const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      r = lum + (r - lum) * sat;
+      g = lum + (g - lum) * sat;
+      b = lum + (b - lum) * sat;
+    }
+    // contrast around mid grey
+    if (con !== 1) {
+      r = (r - 0.5) * con + 0.5;
+      g = (g - 0.5) * con + 0.5;
+      b = (b - 0.5) * con + 0.5;
+    }
+    // shadow lift for that faded-film toe
+    if (lift > 0) {
+      r += lift * (1 - r) * 0.35;
+      g += lift * (1 - g) * 0.30;
+      b += lift * (1 - b) * 0.38;
+    }
+    d[i] = clamp(r * 255, 0, 255);
+    d[i + 1] = clamp(g * 255, 0, 255);
+    d[i + 2] = clamp(b * 255, 0, 255);
   }
-  tctx.putImageData(img, 0, 0);
-  const pat = ctx.createPattern(tile, 'repeat');
-  grainTile = { owner: ctx, pat };
-  return pat;
+  ctx.putImageData(img, 0, 0);
 }
 
-let halftoneTile = null;
-function halftonePattern(ctx) {
-  if (halftoneTile && halftoneTile.owner === ctx) return halftoneTile.pat;
-  const tile = document.createElement('canvas');
-  const step = 8;
-  tile.width = step; tile.height = step;
-  const tctx = tile.getContext('2d');
-  tctx.fillStyle = 'rgba(0,0,0,0.85)';
-  tctx.beginPath();
-  tctx.arc(step / 2, step / 2, 1.6, 0, Math.PI * 2);
-  tctx.fill();
-  const pat = ctx.createPattern(tile, 'repeat');
-  halftoneTile = { owner: ctx, pat };
-  return pat;
-}
-
-export function drawFinish(ctx, id, x, y, w, h, seed = 0) {
-  if (id === 'grain') {
-    ctx.save();
-    ctx.globalCompositeOperation = 'overlay';
-    ctx.globalAlpha = 0.16;
-    ctx.fillStyle = grainPattern(ctx);
-    ctx.translate(x, y);
-    ctx.fillRect(0, 0, w, h);
-    ctx.restore();
-  } else if (id === 'scanlines') {
-    ctx.save();
-    ctx.globalAlpha = 0.16;
-    ctx.fillStyle = '#000';
-    const gap = Math.max(3, Math.round(h / 360));
-    for (let sy = y; sy < y + h; sy += gap * 2) ctx.fillRect(x, sy, w, gap);
-    ctx.restore();
-  } else if (id === 'halftone') {
-    ctx.save();
-    ctx.globalCompositeOperation = 'multiply';
-    ctx.globalAlpha = 0.14;
-    ctx.fillStyle = halftonePattern(ctx);
-    ctx.translate(x, y);
-    ctx.fillRect(0, 0, w, h);
-    ctx.restore();
-  } else if (id === 'vignette') {
-    ctx.save();
-    const glow = ctx.createRadialGradient(x + w / 2, y + h / 2, Math.min(w, h) * 0.42, x + w / 2, y + h / 2, Math.max(w, h) * 0.78);
-    glow.addColorStop(0, 'rgba(0,0,0,0)');
-    glow.addColorStop(1, 'rgba(10,0,24,0.55)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(x, y, w, h);
-    ctx.restore();
-  } else if (id === 'frame') {
-    ctx.save();
-    const t = Math.max(4, Math.round(Math.min(w, h) * 0.012));
-    ctx.strokeStyle = 'rgba(255,255,255,0.82)';
-    ctx.lineWidth = t;
-    ctx.strokeRect(x + t / 2, y + t / 2, w - t, h - t);
-    ctx.strokeStyle = 'rgba(255,60,120,0.9)';
-    ctx.lineWidth = Math.max(2, t * 0.4);
-    const off = t + Math.max(3, t * 0.5);
-    ctx.strokeRect(x + off / 2, y + off / 2, w - off, h - off);
-    ctx.restore();
-  }
-  if (seed !== 0) {
-    // deterministic sprinkle of light leaks so panels differ
-    ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-    ctx.globalAlpha = 0.1;
-    const lx = x + ((seed * 9301 + 49297) % 233280) / 233280 * w;
-    const ly = y + ((seed * 49031 + 929) % 233280) / 233280 * h;
-    const leak = ctx.createRadialGradient(lx, ly, 0, lx, ly, Math.min(w, h) * 0.5);
-    leak.addColorStop(0, 'rgba(255,190,120,0.9)');
-    leak.addColorStop(1, 'rgba(255,190,120,0)');
-    ctx.fillStyle = leak;
-    ctx.fillRect(x, y, w, h);
-    ctx.restore();
+export function applyFinish(ctx, w, h, finish, rng) {
+  switch (finish) {
+    case 'grain': {
+      const img = ctx.getImageData(0, 0, w, h);
+      const d = img.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const n = (rng() - 0.5) * 26;
+        d[i] = clamp(d[i] + n, 0, 255);
+        d[i + 1] = clamp(d[i + 1] + n, 0, 255);
+        d[i + 2] = clamp(d[i + 2] + n, 0, 255);
+      }
+      ctx.putImageData(img, 0, 0);
+      break;
+    }
+    case 'scanlines': {
+      ctx.save();
+      ctx.globalAlpha = 0.14;
+      ctx.fillStyle = '#000';
+      const step = Math.max(3, Math.round(w / 420));
+      for (let y = 0; y < h; y += step * 2) ctx.fillRect(0, y, w, step);
+      ctx.restore();
+      break;
+    }
+    case 'halftone': {
+      ctx.save();
+      ctx.globalAlpha = 0.10;
+      ctx.fillStyle = '#16060f';
+      const step = Math.max(7, Math.round(w / 150));
+      for (let y = 0; y < h; y += step) {
+        for (let x = (y / step) % 2 ? step / 2 : 0; x < w; x += step) {
+          ctx.beginPath();
+          ctx.arc(x, y, step * 0.18, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+      break;
+    }
+    case 'vignette': {
+      const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.36, w / 2, h / 2, Math.max(w, h) * 0.74);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(1, 'rgba(8,2,10,0.5)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+      break;
+    }
+    case 'frame': {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,224,170,0.55)';
+      ctx.lineWidth = Math.max(2, Math.round(Math.min(w, h) * 0.006));
+      ctx.strokeRect(ctx.lineWidth, ctx.lineWidth, w - ctx.lineWidth * 2, h - ctx.lineWidth * 2);
+      ctx.restore();
+      break;
+    }
+    case 'bloom': {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.10;
+      ctx.drawImage(ctx.canvas, 0, 0, w, h);
+      ctx.restore();
+      break;
+    }
   }
 }

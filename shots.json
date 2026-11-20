@@ -1,6 +1,9 @@
-[
-  { "name": "01-cover-wide.jpg", "query": "?embed=1&px=1280x720&size=1920x1080&layout=hero-strip&cap=PALM%20DRIVE&sub=vice%20nights", "w": 1280, "h": 720 },
-  { "name": "02-editor.jpg", "query": "?demo=1&cap=PALM%20DRIVE", "w": 1280, "h": 800 },
-  { "name": "03-editor-portrait.jpg", "query": "?demo=1&size=1080x1350&layout=trilogy&grade=neon&cap=NEON%20PIER&sub=after%20the%20tide", "w": 1280, "h": 800 },
-  { "name": "04-cover-portrait.jpg", "query": "?embed=1&px=768x960&size=1080x1350&layout=hero-strip&grade=neon&cap=NEON%20PIER&sub=after%20the%20tide", "w": 768, "h": 960 }
-]
+{
+  "out": "screenshots",
+  "shots": [
+    { "file": "01-cover-wide.jpg", "url": "?embed=1&shot=wide-sunset&px=1280", "w": 1280, "h": 720, "quality": 0.86 },
+    { "file": "02-editor.jpg", "url": "?demo=1", "w": 1280, "h": 800, "quality": 0.9 },
+    { "file": "03-editor-portrait.jpg", "url": "?demo=1&preset=portrait-diptych", "w": 1280, "h": 800, "quality": 0.9 },
+    { "file": "04-cover-portrait.jpg", "url": "?embed=1&shot=portrait-vice&px=768", "w": 768, "h": 960, "quality": 0.86 }
+  ]
+}

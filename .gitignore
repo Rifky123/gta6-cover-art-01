@@ -1,5 +1,5 @@
-*.png
-*.jpg
-node_modules/
 out/
 out2/
+*.log
+.DS_Store
+Thumbs.db
